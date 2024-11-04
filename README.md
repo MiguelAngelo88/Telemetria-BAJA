@@ -9,3 +9,8 @@ https://docs.google.com/document/d/10cPqrGxGNATz-zq_f9W72cQVOdOiKb-08O4iLef-5Vg/
 
 # Pasta do Google Drive
 https://drive.google.com/drive/folders/12pf-uwY25VX4iIIwu48RXH_IE0EbaV6g?usp=sharing
+
+# Ideias futuras
+- Múltiplas cenas no Display, controladas via botão ou encoder
+- Mapeamento da pista e cálculo da melhor trajetória utilizando Visão Computacional
+- Comunicação via radio frequência entre o piloto e o box (capacete com mic e speaker)
