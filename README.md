@@ -14,3 +14,6 @@ https://drive.google.com/drive/folders/12pf-uwY25VX4iIIwu48RXH_IE0EbaV6g?usp=sha
 - Múltiplas cenas no Display, controladas via botão ou encoder
 - Mapeamento da pista e cálculo da melhor trajetória utilizando Visão Computacional
 - Comunicação via radio frequência entre o piloto e o box (capacete com mic e speaker)
+- Sistema de Recuperação de Energia para otimizar o consumo
+- Implementar um Controle de Tração para detectar patinação e ajustar a distribuição de potência nas rodas
+- Sistema de alertas automáticos no display
