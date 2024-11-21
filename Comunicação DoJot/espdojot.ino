@@ -1,6 +1,44 @@
 #include <WiFi.h>
 #include <PubSubClient.h>
-#include <stdio.h>
+#include <Wire.h>
+#include <Adafruit_GFX.h>
+#include <Adafruit_SSD1306.h>
+#include <LoRa.h>
+
+#define OLED_ADDR 0x3C
+#define OLED_LINE1 0
+#define OLED_LINE2 10
+#define OLED_LINE3 20
+#define OLED_LINE4 30
+#define OLED_LINE5 40
+#define OLED_LINE6 50
+
+#define SCREEN_WIDTH 128
+#define SCREEN_HEIGHT 64
+
+// Instância do display OLED
+Adafruit_SSD1306 display(SCREEN_WIDTH, SCREEN_HEIGHT, &Wire, 16);
+
+/* Definições para comunicação com rádio LoRa */
+#define SCK_LORA           5
+#define MISO_LORA          19
+#define MOSI_LORA          27
+#define RESET_PIN_LORA     14
+#define SS_PIN_LORA        18
+
+#define HIGH_GAIN_LORA     20  /* dBm */
+#define BAND               915E6  /* 915MHz de frequência */
+
+/* Definições gerais */
+#define DEBUG_SERIAL_BAUDRATE    9600
+
+bool init_comunicacao_lora(void);
+
+/* typedefs */
+typedef struct __attribute__((__packed__))  
+{
+  int contador;
+} TDadosLora;
 
 // Configurações de Wi-Fi
 const char* ssid = "Redmi 9";
@@ -8,58 +46,100 @@ const char* password = "W00ahnes00W";
 
 // Configurações MQTT
 const char* mqttServer = "200.129.71.138";
-const int mqttPort = 1883;  // Porta padrão MQTT
-const char* mqttUser = "leandro_leite:a0ad88";  // Apenas o usuário, sem senha
-const char* mqttTopic = "leandro_leite:a0ad88/attrs";  // Substitua <device_id> pelo ID do dispositivo no Dojot
+const int mqttPort = 1883;
+const char* mqttUser = "leandro_leite:a0ad88";
+const char* mqttTopic = "leandro_leite:a0ad88/attrs";
 
 // Cria instâncias para cliente Wi-Fi e MQTT
 WiFiClient espClient;
 PubSubClient client(espClient);
 
+// Variáveis para dados a serem publicados
 int value = 0;
 float temperatura = 0;
 
-// Função para conectar ao Wi-Fi
-void setup_wifi() {
-  delay(10);
-  Serial.println();
-  Serial.print("Conectando a ");
-  Serial.println(ssid);
+bool init_comunicacao_lora(void)
+{
+    bool status_init = false;
+    Serial.println("[LoRa Receiver] Tentando iniciar comunicacao com o radio LoRa...");
+    SPI.begin(SCK_LORA, MISO_LORA, MOSI_LORA, SS_PIN_LORA);
+    LoRa.setPins(SS_PIN_LORA, RESET_PIN_LORA, LORA_DEFAULT_DIO0_PIN);
+    
+    if (!LoRa.begin(BAND)) 
+    {
+        Serial.println("[LoRa Receiver] Comunicacao com o radio LoRa falhou. Nova tentativa em 1 segundo...");        
+        delay(1000);
+        status_init = false;
+    }
+    else
+    {
+        /* Configura o ganho do receptor LoRa para 20dBm, o maior ganho possível (visando maior alcance possível) */ 
+        LoRa.setTxPower(HIGH_GAIN_LORA); 
+        Serial.println("[LoRa Receiver] Comunicacao com o radio LoRa ok");
+        status_init = true;
+    }
 
+    return status_init;
+}
+
+// Função para inicializar o display
+void setupDisplay() {
+  Wire.begin(4, 15); // Inicializa o I2C nos pinos SDA = 4 e SCL = 15
+
+  if (!display.begin(SSD1306_SWITCHCAPVCC, OLED_ADDR)) {
+    Serial.println("Display OLED: falha ao iniciar");
+    while (1);
+  } else {
+    Serial.println("Display OLED: inicialização ok");
+  }
+  display.clearDisplay();
+  display.setTextSize(1);
+  display.setTextColor(WHITE);
+}
+
+// Função para conectar ao Wi-Fi
+void setupWiFi() {
   WiFi.begin(ssid, password);
+  display.clearDisplay();
+  display.setCursor(0, OLED_LINE1);
+  display.println("Conectando ao Wi-Fi...");
+  display.display();
 
   while (WiFi.status() != WL_CONNECTED) {
     delay(500);
     Serial.print(".");
   }
 
-  Serial.println("");
-  Serial.println("WiFi conectado");
+  Serial.println("\nWiFi conectado.");
   Serial.print("Endereço IP: ");
   Serial.println(WiFi.localIP());
-}
 
-// Função de callback MQTT (não será usada neste exemplo, mas pode ser útil para receber mensagens)
-void callback(char* topic, byte* payload, unsigned int length) {
-  Serial.print("Mensagem recebida [");
-  Serial.print(topic);
-  Serial.print("]: ");
-  for (int i = 0; i < length; i++) {
-    Serial.print((char)payload[i]);
-  }
-  Serial.println();
+  display.clearDisplay();
+  display.setCursor(0, OLED_LINE1);
+  display.println("Wi-Fi conectado!");
+  display.setCursor(0, OLED_LINE2);
+  display.print("IP: ");
+  display.println(WiFi.localIP().toString());
+  display.display();
 }
 
 // Função para conectar ao broker MQTT
-void reconnect() {
+void reconnectMQTT() {
   while (!client.connected()) {
-    Serial.print("Conectando ao broker MQTT... ");
+    display.clearDisplay();
+    display.setCursor(0, OLED_LINE1);
+    display.println("Conectando ao MQTT...");
+    display.display();
+
     if (client.connect("ESP32Client", mqttUser, "")) {
-      Serial.println("Conectado com sucesso.");
+      Serial.println("Conectado ao broker MQTT!");
+      display.setCursor(0, OLED_LINE2);
+      display.println("MQTT conectado!");
+      display.display();
     } else {
-      Serial.print("Falhou, rc=");
+      Serial.print("Falha na conexão MQTT, rc=");
       Serial.print(client.state());
-      Serial.println(". Verifique IP, porta, e credenciais.");
+      Serial.println(" Tentando novamente...");
       delay(5000);
     }
   }
@@ -67,45 +147,64 @@ void reconnect() {
 
 void setup() {
   Serial.begin(115200);
-  setup_wifi();
-  
-  client.setServer(mqttServer, mqttPort);
-  client.setCallback(callback);
-  
-  // Configuração de parâmetros adicionais para MQTT
-  client.setKeepAlive(30); // Tempo de keep-alive (30 segundos)
+
+  setupDisplay(); // Inicializa o display OLED
+  setupWiFi();    // Conecta ao Wi-Fi
+
+  client.setServer(mqttServer, mqttPort); // Configura o broker MQTT
+
+  /* Tenta, até obter sucesso, comunicação com o chip LoRa */
+  while(init_comunicacao_lora() == false);    
 }
 
 void loop() {
-  // Verifica se o Wi-Fi está conectado
   if (WiFi.status() != WL_CONNECTED) {
-    Serial.println("Wi-Fi desconectado, tentando reconectar...");
-    setup_wifi();
+    setupWiFi();
   }
 
-  // Reconecta ao broker MQTT se necessário
   if (!client.connected()) {
-    reconnect();
+    reconnectMQTT();
   }
+
   client.loop();
 
-  // Gerando valores aleatórios
-  value = rand() % 15;
-  temperatura = (rand() % 22) / 7.0;
+  int packet_size = LoRa.parsePacket();
+  if (packet_size == sizeof(TDadosLora)) {
+    TDadosLora dados_lora;
+    Serial.println("[LoRa Receiver] Há dados a serem lidos");
 
-  // Formata o payload
-  char payload[52];
-  sprintf(payload, "{\"temp\": %.2f, \"pH\": %d}", temperatura, value);
+    // Lendo os dados do LoRa
+    LoRa.readBytes((char *)&dados_lora, sizeof(TDadosLora));
+    Serial.printf("Dados recebidos: contador = %.2f\n", dados_lora.contador);
 
-  // Publica no tópico
-  Serial.print("Enviando payload: ");
-  Serial.println(payload);
+    // Criando payload para publicação
+    char payload[52];
+    if (!isnan(dados_lora.contador)) {
+        sprintf(payload, "{\"temp\": %.2f}", dados_lora.contador);
+    } else {
+        sprintf(payload, "{\"temp\": null}");
+        Serial.println("Erro: dado do LoRa é inválido (NaN).");
+    }
 
-  if (client.publish(mqttTopic, payload)) {
-    Serial.println("Mensagem publicada com sucesso.");
-  } else {
-    Serial.println("Falha ao publicar a mensagem.");
+    // Exibindo no display e publicando no broker
+    display.clearDisplay();
+    display.setCursor(0, OLED_LINE1);
+    display.println("Publicando MQTT...");
+    display.setCursor(0, OLED_LINE3);
+    display.println(payload);
+    display.display();
+
+    if (client.publish(mqttTopic, payload)) {
+        Serial.println("Mensagem publicada com sucesso");
+        display.setCursor(0, OLED_LINE6);
+        display.println("Envio OK!");
+    } else {
+        Serial.println("Falha ao publicar a mensagem");
+        display.setCursor(0, OLED_LINE6);
+        display.println("Erro no envio!");
+    }
+    display.display();
+
+    delay(2000);
   }
-
-  delay(2000);  // Aguarda 2 segundos antes de enviar novamente
 }
