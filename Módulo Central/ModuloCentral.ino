@@ -4,13 +4,7 @@ void setup() {
   Serial.begin(115200);
   while (!Serial);
 
-  Serial.println("CAN Receiver");
-
-  // Inicia o barramento CAN a 500 kbps
-  if (!CAN.begin(500E3)) {
-    Serial.println("Falha ao iniciar o controlador CAN");
-    while (1);
-  }
+  initializeCAN();  // Configura a comunicação CAN
 }
 
 void loop() {
@@ -36,5 +30,13 @@ void loop() {
     } else {
       Serial.println("Pacote com tamanho ou formato inválido.");
     }
+  }
+}
+
+// Inicializa a comunicação CAN
+void initializeCAN() {
+  Serial.println("Inicializando o Transmissor CAN");
+  if (!CAN.begin(500E3)) {
+    Serial.println("Falha ao iniciar o controlador CAN");
   }
 }
