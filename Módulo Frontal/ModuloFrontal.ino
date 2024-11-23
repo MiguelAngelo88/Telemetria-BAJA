@@ -45,7 +45,7 @@ void loop() {
     // Envia o RPM via CAN
     Serial.println("Enviando RPM via CAN...");
 
-    CAN.beginPacket(0x12);  // ID 18 em hexadecimal
+    CAN.beginPacket(0x15);  // ID 18 em hexadecimal
     CAN.write((rpm >> 8) & 0xFF);  // Envia os 8 bits mais significativos do RPM
     CAN.write(rpm & 0xFF);  // Envia os 8 bits menos significativos do RPM
     CAN.endPacket();  // Encerra o pacote para envio
