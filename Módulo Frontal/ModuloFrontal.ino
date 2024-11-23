@@ -1,40 +1,60 @@
-#include <CAN.h>
+#include <CAN.h>  // Inclui a biblioteca CAN
 
-#define sensorPin 14
+const int sensorPin = 13;  // Pino do sensor indutivo
+volatile unsigned long pulseCount = 0;  // Contador de pulsos
+unsigned long lastTime = 0;
+const unsigned long interval = 1000;  // Intervalo de tempo para cálculo do RPM (1 segundo)
 
-const int n = 2; // Número de pontos detectáveis
-float RPM = 0;
-unsigned long Ti = 0, Tf = 0; // Tempo inicial e final
+void IRAM_ATTR handleInterrupt() {
+  pulseCount++;  // Incrementa o contador de pulsos na interrupção
+}
 
 void setup() {
-  Serial.begin(9600);
+  Serial.begin(115200);  // Inicia a comunicação serial
   while (!Serial);
+
+  Serial.println("Inicializando o Transmissor CAN");
+
+  pinMode(sensorPin, INPUT_PULLUP);  // Configura o pino do sensor como entrada com pull-up
+  attachInterrupt(digitalPinToInterrupt(sensorPin), handleInterrupt, FALLING);  // Configura a interrupção na borda de descida
 
   // Inicia o barramento CAN a 500 kbps
   if (!CAN.begin(500E3)) {
     Serial.println("Falha ao iniciar o controlador CAN");
     while (1);
   }
-
-  pinMode(sensorPin, INPUT);
-  attachInterrupt(digitalPinToInterrupt(sensorPin), rpmCalc, FALLING);
 }
 
 void loop() {
-  // Envia o valor do RPM como um pacote CAN
-  Serial.println("Enviando RPM...");
-  Serial.println(RPM);
+  unsigned long currentTime = millis();
 
-  CAN.beginPacket(0x01); // ID do pacote CAN
-  CAN.write((byte*)&RPM, sizeof(RPM)); // Envia o valor do RPM (float) como 4 bytes
-  CAN.endPacket();
+  // Calcula o RPM a cada segundo
+  if (currentTime - lastTime >= interval) {
+    detachInterrupt(digitalPinToInterrupt(sensorPin));  // Desabilita a interrupção temporariamente
 
-  delay(1000); // Envia a cada segundo
-}
+    // Calcula o RPM
+    unsigned long rpm = (pulseCount * 60) / (interval / 1000);
+   
+    // Converte o RPM para string
+    String rpmStr = String(rpm);
 
-void rpmCalc() {
-  Tf = micros();
-  unsigned long delta = Tf - Ti;
-  RPM = (60) / ((float(delta) / 1000000) * n); // RPM = 60*n / T
-  Ti = Tf;
+    // Exibe o RPM no monitor serial
+    Serial.print("RPM: ");
+    Serial.println(rpmStr);
+
+    // Envia o RPM via CAN
+    Serial.println("Enviando RPM via CAN...");
+
+    CAN.beginPacket(0x12);  // ID 18 em hexadecimal
+    CAN.write((rpm >> 8) & 0xFF);  // Envia os 8 bits mais significativos do RPM
+    CAN.write(rpm & 0xFF);  // Envia os 8 bits menos significativos do RPM
+    CAN.endPacket();  // Encerra o pacote para envio
+
+    Serial.println("RPM enviado.");
+
+    pulseCount = 0;  // Reseta o contador de pulsos
+    lastTime = currentTime;  // Atualiza o tempo
+
+    attachInterrupt(digitalPinToInterrupt(sensorPin), handleInterrupt, FALLING);  // Reabilita a interrupção
+  }
 }
