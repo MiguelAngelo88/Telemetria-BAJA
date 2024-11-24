@@ -4,23 +4,6 @@
 #include <LoRa.h>
 #include <SPI.h>
 
-#define csPin 15
-
-/* Endereço I2C do display */
-#define OLED_ADDR 0x3c
-
-/* distancia, em pixels, de cada linha em relacao ao topo do display */
-#define OLED_LINE1 0
-#define OLED_LINE2 10
-#define OLED_LINE3 20
-#define OLED_LINE4 30
-#define OLED_LINE5 40
-#define OLED_LINE6 50
-
-/* Configuração da resolucao do display (este modulo possui display 128x64) */
-#define SCREEN_WIDTH 128
-#define SCREEN_HEIGHT 64
-
 /* Definicoes para comunicação com radio LoRa */
 #define SCK_LORA           5
 #define MISO_LORA          19
@@ -31,18 +14,19 @@
 #define HIGH_GAIN_LORA     20  /* dBm */
 #define BAND               915E6  /* 915MHz de frequencia */
 
-/*
-   Variáveis e objetos globais
-*/
-
-/* objeto do display */
-Adafruit_SSD1306 display(SCREEN_WIDTH, SCREEN_HEIGHT, &Wire, 16);
+/* typedefs */
+typedef struct __attribute__((__packed__))
+{
+  int rpmLoRa;
+} TDadosLora;
 
 void setup() {
   Serial.begin(115200);
-  while (!Serial);
 
   initializeCAN();  // Configura a comunicação CAN
+
+  /* Tenta, até obter sucesso, comunicacao com o chip LoRa */
+  while (init_comunicacao_lora() == false);
 }
 
 void loop() {
@@ -65,6 +49,8 @@ void loop() {
       // Exibe o RPM no monitor serial
       Serial.print("RPM recebido: ");
       Serial.println(rpm);
+
+      envia_informacoes_lora(rpm);
     } else {
       Serial.println("Pacote com tamanho ou formato inválido.");
     }
@@ -74,9 +60,49 @@ void loop() {
 // Inicializa a comunicação CAN
 void initializeCAN() {
 
-  CAN.setPins(csPin, 4);
+  CAN.setPins(15, 4);
   Serial.println("Inicializando o Transmissor CAN");
   if (!CAN.begin(500E3)) {
     Serial.println("Falha ao iniciar o controlador CAN");
   }
+}
+
+void envia_informacoes_lora(int rpm)
+{
+ 
+  TDadosLora dados_lora;
+
+  dados_lora.rpmLoRa = rpm;
+
+  LoRa.beginPacket();
+  LoRa.write((unsigned char *)&dados_lora, sizeof(TDadosLora));
+  LoRa.endPacket();
+
+  Serial.print("LoRa enviou:");
+  Serial.println(rpm);
+}
+
+
+bool init_comunicacao_lora(void)
+{
+  bool status_init = false;
+  Serial.println("[LoRa Sender] Tentando iniciar comunicacao com o radio LoRa...");
+  SPI.begin(SCK_LORA, MISO_LORA, MOSI_LORA, SS_PIN_LORA);
+  LoRa.setPins(SS_PIN_LORA, RESET_PIN_LORA, LORA_DEFAULT_DIO0_PIN);
+
+  if (!LoRa.begin(BAND))
+  {
+    Serial.println("[LoRa Sender] Comunicacao com o radio LoRa falhou. Nova tentativa em 1 segundo...");
+    delay(1000);
+    status_init = false;
+  }
+  else
+  {
+    /* Configura o ganho do receptor LoRa para 20dBm, o maior ganho possível (visando maior alcance possível) */
+    LoRa.setTxPower(HIGH_GAIN_LORA);
+    Serial.println("[LoRa Sender] Comunicacao com o radio LoRa ok");
+    status_init = true;
+  }
+
+  return status_init;
 }
