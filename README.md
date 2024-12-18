@@ -1,5 +1,6 @@
 # Arquitetura Interna
-![croqui telemetria BAJA](https://github.com/user-attachments/assets/00c3719a-1c46-4caa-b172-c2e161368b88)
+
+![croqui telemetria BAJA](https://github.com/user-attachments/assets/cad6ea5b-cae7-4df8-ae72-bb1294c1feb5)
 
 # Arquitetura Externa
 ![Arquitetura externa - telemetria BAJA](https://github.com/user-attachments/assets/bad7541f-d757-440a-9046-76423acb5b15)
