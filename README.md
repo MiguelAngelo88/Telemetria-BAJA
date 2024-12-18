@@ -1,5 +1,8 @@
-# Telemetria-BAJA
+# Arquitetura Interna
 ![croqui telemetria BAJA](https://github.com/user-attachments/assets/00c3719a-1c46-4caa-b172-c2e161368b88)
+
+# Arquitetura Externa
+![Arquitetura externa - telemetria BAJA](https://github.com/user-attachments/assets/bad7541f-d757-440a-9046-76423acb5b15)
 
 # Cronograma de Atividades
 https://docs.google.com/spreadsheets/d/1f6BjYHv89a4gd36owJ_0MwVJ5d3ZieXN16XCeML3Rqs/edit?usp=sharing
