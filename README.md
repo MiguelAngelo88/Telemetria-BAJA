@@ -29,3 +29,5 @@ https://drive.google.com/drive/folders/12pf-uwY25VX4iIIwu48RXH_IE0EbaV6g?usp=sha
 | ------------- | ------------- |
 | GPIO4  | CAN RX  |
 | GPIO5  | CAN TX  |
+| GPIO13  | Sensor indutivo  |
+| GPIO12  | Sensor de tensão  |
