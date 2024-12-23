@@ -21,3 +21,8 @@ https://drive.google.com/drive/folders/12pf-uwY25VX4iIIwu48RXH_IE0EbaV6g?usp=sha
 - Sistema de Recuperação de Energia para otimizar o consumo
 - Implementar um Controle de Tração para detectar patinação e ajustar a distribuição de potência nas rodas
 - Sistema de alertas automáticos no display
+  
+| Pino do ESP32  | Componente |
+| ------------- | ------------- |
+| GPIO4  | CAN RX  |
+| GPIO5  | CAN TX  |
