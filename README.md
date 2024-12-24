@@ -25,9 +25,21 @@ https://drive.google.com/drive/folders/12pf-uwY25VX4iIIwu48RXH_IE0EbaV6g?usp=sha
 - Implementar um Controle de Tração para detectar patinação e ajustar a distribuição de potência nas rodas
 - Sistema de alertas automáticos no display
   
+# Módulo frontal pinout  
 | Pino do ESP32  | Componente |
 | ------------- | ------------- |
 | GPIO4  | CAN RX  |
 | GPIO5  | CAN TX  |
 | GPIO13  | Sensor indutivo  |
 | GPIO12  | Sensor de tensão  |
+
+# Módulo central pinout  
+| Pino do ESP32  | Componente |
+| ------------- | ------------- |
+| GPIO4  | CAN RX  |
+| GPIO15  | CAN TX  |
+| GPIO5  | SCK_LORA  |
+| GPIO19  | MISO_LORA  |
+| GPIO27  | MOSI_LORA  |
+| GPIO14  | RESET_PIN_LORA  |
+| GPIO18  | SS_PIN_LORA  |
