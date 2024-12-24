@@ -45,3 +45,11 @@ https://drive.google.com/drive/folders/12pf-uwY25VX4iIIwu48RXH_IE0EbaV6g?usp=sha
 | GPIO18  | SS_PIN_LORA  |
 | GPIO3  | DISPLAY TX  |
 | GPIO1  | DISPLAY RX  |
+
+# Módulo traseiro pinout  
+| Pino do ESP32  | Componente |
+| ------------- | ------------- |
+| GPIO4  | CAN RX  |
+| GPIO5  | CAN TX  |
+| GPIO13  |   |
+| GPIO12  |   |
