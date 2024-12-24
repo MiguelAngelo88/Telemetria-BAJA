@@ -8,6 +8,9 @@
 # Pinout Lora32 V2
 ![image](https://github.com/user-attachments/assets/a2757a7a-5f3b-4c13-9c52-783dc83b022d)
 
+# Pinout ESP32 DEVKIT V1
+![image](https://github.com/user-attachments/assets/bc26dedf-425d-4fe8-8fed-57348c26a5f2)
+
 # Cronograma de Atividades
 https://docs.google.com/spreadsheets/d/1f6BjYHv89a4gd36owJ_0MwVJ5d3ZieXN16XCeML3Rqs/edit?usp=sharing
 
