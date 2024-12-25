@@ -1,5 +1,8 @@
 #include <CAN.h>  // Inclui a biblioteca CAN
 
+//Configuração do watchdog
+hw_timer_t *wdTimer = NULL;
+
 // Definições e variáveis para o RPM DO MOTOR
 const int rpmPin = 13;  // Pino do sensor indutivo
 volatile unsigned long pulseCount = 0;  // Contador de pulsos
@@ -10,17 +13,34 @@ void setup() {
   Serial.begin(115200);  // Inicia a comunicação serial
   while (!Serial);
 
+  configureWatchdog();// Configura o watchdog
   initializeCAN();  // Configura a comunicação CAN
   initializeSensors();  // Configura o sensor indutivo
 }
 
 void loop() {
+  timerWrite(wdTimer, 0);// reseta o timer do watchdog
   processRPM();  // Processa o cálculo e envio do RPM
+}
+
+//Função que reinicia o ESP
+void IRAM_ATTR resetModule(){
+  ets_printf("(watchdog) reiniciar\n");
+  //esp_restart_noos();//reinicia o chip
+  esp_restart();
 }
 
 // Função de interrupção para contar pulsos do sensor indutivo
 void IRAM_ATTR handleInterrupt() {
   pulseCount++;
+}
+
+//Configura o watchdog
+void configureWatchdog(){
+  wdTimer = timerBegin(0,80, true); //timerID 0, 80 MHz
+  timerAttachInterrupt(wdTimer, &resetModule, true);
+  timerAlarmWrite(wdTimer, 3000000, true); //3000000 us = 3s
+  timerAlarmEnable(wdTimer);
 }
 
 // Inicializa a comunicação CAN
