@@ -1,4 +1,5 @@
 #include <CAN.h>  // Inclui a biblioteca CAN
+#include "max6675.h" //Sensor da temp do freio
 
 //Configuração do watchdog
 hw_timer_t *wdTimer = NULL;
@@ -8,6 +9,12 @@ const int rpmPin = 13;  // Pino do sensor indutivo
 volatile unsigned long pulseCount = 0;  // Contador de pulsos
 unsigned long lastTime = 0;
 const unsigned long interval = 1000;  // Intervalo de tempo para cálculo do RPM (1 segundo)
+
+// Definições e variáveis para a TEMPERATURA DO FREIO
+int thermoDO = 19;
+int thermoCS = 23;
+int thermoCLK = 5;
+MAX6675 thermocouple(thermoCLK, thermoCS, thermoDO);//declara o objeto MAX6675
 
 void setup() {
   Serial.begin(115200);  // Inicia a comunicação serial
@@ -21,6 +28,8 @@ void setup() {
 void loop() {
   timerWrite(wdTimer, 0);// reseta o timer do watchdog
   processRPM();  // Processa o cálculo e envio do RPM
+  processTempFreio(); // Processa o cálculo e envio da Temp do freio
+  delay(500);
 }
 
 //Função que reinicia o ESP
@@ -70,7 +79,12 @@ void processRPM() {
     Serial.print("RPM: ");
     Serial.println(rpm);
     
-    sendRPMViaCAN(rpm);  // Envia o RPM via CAN
+    // Envia o RPM via CAN
+    CAN.beginPacket(0x15);  // ID em hexadecimal
+    CAN.write((rpm >> 8) & 0xFF);  // Envia os 8 bits mais significativos
+    CAN.write(rpm & 0xFF);  // Envia os 8 bits menos significativos
+    CAN.endPacket();  // Encerra o pacote
+    Serial.println("RPM enviado via CAN.");
     
     pulseCount = 0;  // Reseta o contador de pulsos
     lastTime = currentTime;  // Atualiza o tempo
@@ -79,11 +93,20 @@ void processRPM() {
   }
 }
 
-// Envia o RPM via CAN
-void sendRPMViaCAN(unsigned long rpm) {
-  CAN.beginPacket(0x15);  // ID em hexadecimal
-  CAN.write((rpm >> 8) & 0xFF);  // Envia os 8 bits mais significativos
-  CAN.write(rpm & 0xFF);  // Envia os 8 bits menos significativos
+void processTempFreio() {
+  // Lê a temperatura em graus Celsius
+  int tempFreio = thermocouple.readCelsius();
+  
+  // Imprime a temperatura no monitor serial
+  Serial.print("Temperatura do Freio: ");
+  Serial.print(tempFreio);
+  Serial.println(" °C");
+  
+  // Envia a temperatura do freio via CAN
+  CAN.beginPacket(0x16);  // ID único para a temperatura do freio
+  CAN.write((tempFreio >> 8) & 0xFF);  // Envia os 8 bits mais significativos
+  CAN.write(tempFreio & 0xFF);        // Envia os 8 bits menos significativos
   CAN.endPacket();  // Encerra o pacote
-  Serial.println("RPM enviado via CAN.");
+  
+  Serial.println("Temperatura do freio enviada via CAN.");
 }
