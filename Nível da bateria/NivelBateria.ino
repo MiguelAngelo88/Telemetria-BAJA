@@ -18,3 +18,20 @@ void loop()
   delay(500);
 }
 
+/*####################################################*/
+
+#define sensorPin A0
+
+void setup() {
+Serial.begin(115200);
+}
+
+void loop() {
+//measuring voltage using "B25 0 to 25V" Voltage Sensor
+
+float voltage = analogRead(sensorPin)*5*5.0/1023;     //PV panel voltage
+
+Serial.println(voltage);    //send the voltage to serial port
+
+delay(1000); //wait 1s before repeating
+}
