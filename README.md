@@ -25,7 +25,7 @@ https://drive.google.com/drive/folders/12pf-uwY25VX4iIIwu48RXH_IE0EbaV6g?usp=sha
 | ------------- | ------------- |
 | GPIO4  | CAN RX  |
 | GPIO15  | CAN TX  |
-| GPIO13  | Sensor indutivo  |
+| GPIO13  | Sensor Indutivo da velocidade |
 | GPIO12  | Sensor de tensão  |
 | GPIO19  | MAX6675 SO |
 | GPIO23  | MAX6675 CS  |
@@ -51,6 +51,7 @@ https://drive.google.com/drive/folders/12pf-uwY25VX4iIIwu48RXH_IE0EbaV6g?usp=sha
 | GPIO15  | CAN TX  |
 | GPIO21  | MLX90614 SDA|
 | GPIO22  |  MLX90614 SCL |
+| GPIO13  | Sensor Indutivo do RPM |
 
 # Ideias futuras
 - Múltiplas cenas no Display, controladas via botão ou encoder
