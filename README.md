@@ -49,8 +49,8 @@ https://drive.google.com/drive/folders/12pf-uwY25VX4iIIwu48RXH_IE0EbaV6g?usp=sha
 | ------------- | ------------- |
 | GPIO4  | CAN RX  |
 | GPIO15  | CAN TX  |
-| GPIO13  |   |
-| GPIO12  |   |
+| GPIO21  | MLX90614 SDA|
+| GPIO22  |  MLX90614 SCL |
 
 # Ideias futuras
 - Múltiplas cenas no Display, controladas via botão ou encoder
