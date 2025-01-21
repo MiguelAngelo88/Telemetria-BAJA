@@ -41,8 +41,8 @@ https://drive.google.com/drive/folders/12pf-uwY25VX4iIIwu48RXH_IE0EbaV6g?usp=sha
 | GPIO27  | MOSI_LORA  |
 | GPIO14  | RESET_PIN_LORA  |
 | GPIO18  | SS_PIN_LORA  |
-| GPIO3  | DISPLAY TX  |
-| GPIO1  | DISPLAY RX  |
+| GPIO16  | DISPLAY TX  |
+| GPIO17  | DISPLAY RX  |
 
 # Módulo traseiro pinout  
 | Pino do ESP32  | Componente |
