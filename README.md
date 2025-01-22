@@ -23,8 +23,8 @@ https://drive.google.com/drive/folders/12pf-uwY25VX4iIIwu48RXH_IE0EbaV6g?usp=sha
 # Módulo frontal pinout  
 | Pino do ESP32  | Componente |
 | ------------- | ------------- |
-| GPIO4  | CAN RX  |
-| GPIO15  | CAN TX  |
+| GPIO4  | CAN TX  |
+| GPIO15  | CAN RX  |
 | GPIO13  | Sensor Indutivo da velocidade |
 | GPIO12  | Sensor de tensão  |
 | GPIO19  | MAX6675 SO |
@@ -34,8 +34,8 @@ https://drive.google.com/drive/folders/12pf-uwY25VX4iIIwu48RXH_IE0EbaV6g?usp=sha
 # Módulo central pinout  
 | Pino do ESP32  | Componente |
 | ------------- | ------------- |
-| GPIO4  | CAN RX  |
-| GPIO15  | CAN TX  |
+| GPIO4  | CAN TX  |
+| GPIO15  | CAN RX  |
 | GPIO5  | SCK_LORA  |
 | GPIO19  | MISO_LORA  |
 | GPIO27  | MOSI_LORA  |
@@ -47,8 +47,8 @@ https://drive.google.com/drive/folders/12pf-uwY25VX4iIIwu48RXH_IE0EbaV6g?usp=sha
 # Módulo traseiro pinout  
 | Pino do ESP32  | Componente |
 | ------------- | ------------- |
-| GPIO4  | CAN RX  |
-| GPIO15  | CAN TX  |
+| GPIO4  | CAN TX  |
+| GPIO15  | CAN RX  |
 | GPIO21  | MLX90614 SDA|
 | GPIO22  |  MLX90614 SCL |
 | GPIO13  | Sensor Indutivo do RPM |
