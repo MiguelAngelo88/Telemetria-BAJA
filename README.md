@@ -56,6 +56,10 @@ https://drive.google.com/drive/folders/12pf-uwY25VX4iIIwu48RXH_IE0EbaV6g?usp=sha
 | GPIO22  |  MLX90614 SCL |
 | GPIO13  | Sensor Indutivo do RPM |
 
+# Tabela de consumo energético 
+| Componente | Tensão de operação | Corrente máxima |
+| ------------- | ------------- | ------------- |
+
 # Ideias futuras
 - Múltiplas cenas no Display, controladas via botão ou encoder
 - Mapeamento da pista e cálculo da melhor trajetória utilizando Visão Computacional
