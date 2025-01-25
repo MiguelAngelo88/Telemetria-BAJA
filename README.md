@@ -57,8 +57,10 @@ https://drive.google.com/drive/folders/12pf-uwY25VX4iIIwu48RXH_IE0EbaV6g?usp=sha
 | GPIO13  | Sensor Indutivo do RPM |
 
 # Tabela de consumo energético 
-| Componente | Tensão de operação | Corrente máxima |
-| ------------- | ------------- | ------------- |
+| Componente | Módulo | Tensão de operação | Corrente máxima |
+| ------------- | ------------- | ------------- | ------------- |
+| Sensor Indutivo | Frontal | 12V | 40mA |
+| Sensor de tensão | Frontal | 5V | 20mA |
 
 # Ideias futuras
 - Múltiplas cenas no Display, controladas via botão ou encoder
