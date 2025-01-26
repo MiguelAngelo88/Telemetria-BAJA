@@ -59,12 +59,15 @@ https://drive.google.com/drive/folders/12pf-uwY25VX4iIIwu48RXH_IE0EbaV6g?usp=sha
 # Tabela de consumo energético 
 | Componente | Módulo | Tensão de operação | Corrente máxima |
 | ------------- | ------------- | ------------- | ------------- |
+| Esp32 | Frontal | 5V | 500mA|
 | Sensor Indutivo | Frontal | 12V | 300mA |
 | Sensor de tensão | Frontal | 5V | 20mA |
 | Sensor MAX6675 | Frontal | 5V | 50mA |
+| Esp32 | Traseiro | 5V | 500mA|
 | Sensor MLX90614 | Traseiro | 5V | 25mA |
 | Sensor Indutivo | Traseiro | 12V | 300mA |
 | Sensor Capacitivo (3x) | Traseiro | 12V | 300mA (900mA)|
+| Esp32 | Central | 5V | 500mA|
 | Display DMG80480C070_03W | Central | 5V | 610mA|
 
 # Ideias futuras
