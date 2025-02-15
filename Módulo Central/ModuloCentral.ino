@@ -3,6 +3,23 @@
 #include <Wire.h>
 #include <LoRa.h>
 #include <SPI.h>
+#include <SoftwareSerial.h>
+
+/* Definicoes para comunicação com o display */
+const byte rxPin = 16;  //rx2
+const byte txPin = 17;  //tx2
+SoftwareSerial mySerial(rxPin, txPin);
+
+#define velocidade 0x61
+#define rpmMotor 0x62
+#define tempFreio 0x63
+#define tempCVT 0x64
+
+unsigned char vel[8] = { 0x5a, 0xa5, 0x05, 0x82, velocidade, 0x00, 0x00, 0x00 };
+unsigned char rpm[8] = { 0x5a, 0xa5, 0x05, 0x82, rpm, 0x00, 0x00, 0x00 };
+unsigned char freio[8] = { 0x5a, 0xa5, 0x05, 0x82, freio, 0x00, 0x00, 0x00 };
+unsigned char cvt[8] = { 0x5a, 0xa5, 0x05, 0x82, cvt, 0x00, 0x00, 0x00 };
+
 
 /* Definicoes para comunicação com radio LoRa */
 #define SCK_LORA           5
@@ -181,4 +198,12 @@ bool init_comunicacao_lora(void){
   }
 
   return status_init;
+}
+
+int send_Display() {
+  //Envia o valor da velocidade para o display
+  vel[6] = highByte(t);
+  vel[7] = lowByte(t);
+  mySerial.write(vel, 8);
+ 
 }
