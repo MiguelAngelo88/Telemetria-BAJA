@@ -60,13 +60,16 @@ https://drive.google.com/drive/folders/12pf-uwY25VX4iIIwu48RXH_IE0EbaV6g?usp=sha
 | Componente | Módulo | Tensão de operação | Corrente máxima |
 | ------------- | ------------- | ------------- | ------------- |
 | Esp32 | Frontal | 5V | 500mA|
+| Transceiver sn65hvd230 | Frontal | 3.3V | 17mA|
 | Sensor Indutivo | Frontal | 12V | 300mA |
 | Sensor de tensão | Frontal | 5V | 20mA |
 | Sensor MAX6675 | Frontal | 5V | 50mA |
 | Esp32 | Traseiro | 5V | 500mA|
+| Transceiver sn65hvd230 | Traseiro | 3.3V | 17mA|
 | Sensor MLX90614 | Traseiro | 5V | 25mA |
 | Sensor Indutivo | Traseiro | 12V | 300mA |
 | Esp32 | Central | 5V | 500mA|
+| Transceiver sn65hvd230 | Central | 3.3V | 17mA|
 | Display DMG80480C070_03W | Central | 5V | 610mA|
 
 # Ideias futuras
