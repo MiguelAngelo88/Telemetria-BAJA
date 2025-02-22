@@ -66,7 +66,6 @@ https://drive.google.com/drive/folders/12pf-uwY25VX4iIIwu48RXH_IE0EbaV6g?usp=sha
 | Esp32 | Traseiro | 5V | 500mA|
 | Sensor MLX90614 | Traseiro | 5V | 25mA |
 | Sensor Indutivo | Traseiro | 12V | 300mA |
-| Sensor Capacitivo (3x) | Traseiro | 12V | 300mA (900mA)|
 | Esp32 | Central | 5V | 500mA|
 | Display DMG80480C070_03W | Central | 5V | 610mA|
 
