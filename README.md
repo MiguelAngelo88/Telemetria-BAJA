@@ -2,7 +2,7 @@
 ![croqui telemetria BAJA](https://github.com/user-attachments/assets/2d39a95c-3ffb-498f-b455-7dad052f3d03)
 
 # Arquitetura Externa
-![Arquitetura externa - telemetria BAJA](https://github.com/user-attachments/assets/bad7541f-d757-440a-9046-76423acb5b15)
+![Arquitetura externa - telemetria BAJA (1)](https://github.com/user-attachments/assets/0eabbcf2-508f-4049-9948-e3a62e71c3a5)
 
 # Pinout Lora32 V2
 ![image](https://github.com/user-attachments/assets/a2757a7a-5f3b-4c13-9c52-783dc83b022d)
