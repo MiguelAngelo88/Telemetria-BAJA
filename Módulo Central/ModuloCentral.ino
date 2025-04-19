@@ -42,6 +42,9 @@ typedef struct __attribute__((__packed__))
   unsigned int cvtLoRa;
 } TDadosLora;
 
+TDadosLora dados_lora_atual = {0};
+TDadosLora dados_lora_anterior = {0};
+
 void setup() {
   Serial.begin(115200);
 
@@ -76,8 +79,8 @@ void loop() {
       //Envia o valor da velocidade para o display
       envia_para_display(vel, velocidade);
 
-      //Envia o valor da velocidade para o Box
-      envia_informacoes_lora(velocidade,0,0,0,0,0);
+      //Atualiza o valor da velocidade para a comunicação LoRa
+      dados_lora_atual.velocidadeLoRa = velocidade;
 
       } else if(CAN.packetId() == 0x16){ //ID15->Temperatura do freio
       int freioHighByte = CAN.read();  // Primeiro byte (mais significativo)
@@ -93,8 +96,8 @@ void loop() {
       //Envia o valor da temp do freio para o display
       envia_para_display(freio, tempFreio);
 
-      //Envia o valor da temp do freio para o Box
-      envia_informacoes_lora(0,tempFreio,0,0,0,0);
+      //Atualiza o valor da temp do freio para a comunicação LoRa
+      dados_lora_atual.freioLoRa = tempFreio;
 
       } else if(CAN.packetId() == 0x17){ //ID17->Nível da bateria
       int bateriaHighByte = CAN.read();  // Primeiro byte (mais significativo)
@@ -110,8 +113,8 @@ void loop() {
       //Envia o valor do nivel da bateria para o display
       envia_para_display(bat, NivelBateria);
 
-      //Envia o valor da temp do freio para o Box
-      envia_informacoes_lora(0,0,NivelBateria,0,0,0);
+      //Atualiza o valor do nivel da bateria para a comunicação LoRa
+      dados_lora_atual.bateriaLoRa = NivelBateria;
 
       } else if(CAN.packetId() == 0x18){ //ID18->RPM
       int rpmHighByte = CAN.read();  // Primeiro byte (mais significativo)
@@ -127,8 +130,8 @@ void loop() {
       //Envia o valor do RPM para o display
       envia_para_display(rpm, RPM);
 
-      //Envia o valor do RPM para o Box
-      envia_informacoes_lora(0,0,0,RPM,0,0);
+      //Atualiza o valor do RPM para a comunicação LoRa
+      dados_lora_atual.rpmLoRa = RPM;
 
       } else if(CAN.packetId() == 0x19){ //ID19->Temperatura da CVT
       int cvtHighByte = CAN.read();  // Primeiro byte (mais significativo)
@@ -144,8 +147,8 @@ void loop() {
       //Envia o valor do RPM para o display
       envia_para_display(cvt, tempCVT);
 
-      //Envia o valor da temp da cvt para o Box
-      envia_informacoes_lora(0,0,0,0,tempCVT,0);
+      //Atualiza o valor da temp da cvt para a comunicação LoRa
+      dados_lora_atual.cvtLoRa = tempCVT;
 
     } else if(CAN.packetId() == 0x20){ //ID20->Nível de combustível
       int nivelCombustivel = CAN.read(); 
@@ -157,45 +160,35 @@ void loop() {
       //Envia o nivel de combustivel para o display
       envia_para_display(comb, nivelCombustivel);
 
-      //Envia o valor do nivel de combustivel para o Box
-      envia_informacoes_lora(0,0,0,0,0,nivelCombustivel); 
+      //Atualiza o valor do nivel de combustivel para a comunicação LoRa
+      dados_lora_atual.combustivelLoRa = nivelCombustivel; 
 
     } else {
       Serial.println("Pacote com tamanho ou formato inválido.");
     }
   }
  }
+  envia_dados_lora();
 }
 
-void envia_informacoes_lora(unsigned int velocidade, unsigned int temperaturaFreio, unsigned int nivelBateria, unsigned int rpm, unsigned int tempCVT, unsigned int combustivel){
- 
-  TDadosLora dados_lora;
-
-  dados_lora.velocidadeLoRa = velocidade;
-  dados_lora.freioLoRa = temperaturaFreio;
-  dados_lora.bateriaLoRa = nivelBateria;
-  dados_lora.rpmLoRa = rpm;
-  dados_lora.cvtLoRa = tempCVT;
-  dados_lora.combustivelLoRa = combustivel;
+void envia_dados_lora() {
+  if (memcmp(&dados_lora_atual, &dados_lora_anterior, sizeof(TDadosLora)) == 0) {
+    return; // Sem mudanças, não envia
+  }
 
   LoRa.beginPacket();
-  LoRa.write((uint8_t*)&dados_lora, sizeof(TDadosLora));
+  LoRa.write((uint8_t*)&dados_lora_atual, sizeof(TDadosLora));
   LoRa.endPacket();
 
-// Exibe no monitor serial os dados enviados
-  Serial.print("LoRa enviou dados: ");
-  Serial.print("Velocidade: ");
-  Serial.print(velocidade);
-  Serial.print(", TempFreio: ");
-  Serial.print(temperaturaFreio);
-  Serial.print(", NivelBateria: ");
-  Serial.print(nivelBateria);
-  Serial.print(", RPM: ");
-  Serial.print(rpm);
-  Serial.print(", tempCVT: ");
-  Serial.print(tempCVT);
-  Serial.print(", Combustivel: ");
-  Serial.println(combustivel);
+  dados_lora_anterior = dados_lora_atual;
+
+  Serial.printf("[LoRa Enviado] vel: %u, freio: %u, bat: %u, rpm: %u, cvt: %u, comb: %u\n",
+                dados_lora_atual.velocidadeLoRa,
+                dados_lora_atual.freioLoRa,
+                dados_lora_atual.bateriaLoRa,
+                dados_lora_atual.rpmLoRa,
+                dados_lora_atual.cvtLoRa,
+                dados_lora_atual.combustivelLoRa);
 }
 
 // Inicializa a comunicação CAN
