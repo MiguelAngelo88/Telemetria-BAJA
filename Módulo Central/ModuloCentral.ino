@@ -47,6 +47,7 @@ TDadosLora dados_lora_anterior = {0};
 
 void setup() {
   Serial.begin(115200);
+  mySerial.begin(115200);
 
   initializeCAN();  // Configura a comunicação CAN
 
