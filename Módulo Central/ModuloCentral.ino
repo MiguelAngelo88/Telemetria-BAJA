@@ -46,6 +46,7 @@ TDadosLora dados_lora_atual = {0};
 TDadosLora dados_lora_anterior = {0};
 
 void setup() {
+  
   Serial.begin(115200);
   mySerial.begin(115200);
 
