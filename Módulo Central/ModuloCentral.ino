@@ -1,3 +1,10 @@
+/*
+  Telemetria Veicular - Módulo Central
+  Autor: Miguel Ângelo de Lacerda Silva
+  Data: 2025
+  Descrição: Leitura de dados via CAN, envio para display TFT e transmissão via rádio LoRa.
+*/
+
 #include <CAN.h>
 #include <WiFi.h>
 #include <Wire.h>
@@ -9,12 +16,14 @@
 const byte rxPin = 16;  //rx2
 const byte txPin = 17;  //tx2
 SoftwareSerial mySerial(rxPin, txPin);
-#define DISP_ID_VELOCIDADE 0x61
-#define DISP_ID_RPM 0x62
-#define DISP_ID_FREIO 0x63
-#define DISP_ID_CVT 0x64
-#define DISP_ID_BATERIA 0x65
-#define DISP_ID_COMBUSTIVEL 0x66
+
+constexpr uint8_t DISP_ID_VELOCIDADE = 0x61;
+constexpr uint8_t DISP_ID_RPM        = 0x62;
+constexpr uint8_t DISP_ID_FREIO      = 0x63;
+constexpr uint8_t DISP_ID_CVT        = 0x64;
+constexpr uint8_t DISP_ID_BATERIA    = 0x65;
+constexpr uint8_t DISP_ID_COMBUSTIVEL= 0x66;
+
 unsigned char vel[8] = { 0x5a, 0xa5, 0x05, 0x82, DISP_ID_VELOCIDADE, 0x00, 0x00, 0x00 };
 unsigned char rpm[8] = { 0x5a, 0xa5, 0x05, 0x82, DISP_ID_RPM, 0x00, 0x00, 0x00 };
 unsigned char freio[8] = { 0x5a, 0xa5, 0x05, 0x82, DISP_ID_FREIO, 0x00, 0x00, 0x00 };
@@ -23,23 +32,22 @@ unsigned char bat[8] = { 0x5a, 0xa5, 0x05, 0x82, DISP_ID_BATERIA, 0x00, 0x00, 0x
 unsigned char comb[8] = { 0x5a, 0xa5, 0x05, 0x82, DISP_ID_COMBUSTIVEL, 0x00, 0x00, 0x00 };
 
 /* Definicoes para comunicação com radio LoRa */
-#define SCK_LORA           5
-#define MISO_LORA          19
-#define MOSI_LORA          27
-#define RESET_PIN_LORA     14
-#define SS_PIN_LORA        18
-#define HIGH_GAIN_LORA     20  /* dBm */
-#define BAND               915E6  /* 915MHz de frequencia */
+constexpr int SCK_LORA   = 5;
+constexpr int MISO_LORA  = 19;
+constexpr int MOSI_LORA  = 27;
+constexpr int RESET_LORA = 14;
+constexpr int SS_LORA    = 18;
+constexpr int TX_POWER   = 20; // dBm
+constexpr float BAND     = 915E6;
 
-/* typedefs */
-typedef struct __attribute__((__packed__))
-{
-  unsigned int rpmLoRa;
-  unsigned int velocidadeLoRa;
-  unsigned int combustivelLoRa;
-  unsigned int bateriaLoRa;
-  unsigned int freioLoRa;
-  unsigned int cvtLoRa;
+/* Struct de dados LoRa */
+typedef struct __attribute__((__packed__)){
+  uint16_t rpmLoRa;
+  uint16_t velocidadeLoRa;
+  uint16_t combustivelLoRa;
+  uint16_t bateriaLoRa;
+  uint16_t freioLoRa;
+  uint16_t cvtLoRa;
 } TDadosLora;
 
 TDadosLora dados_lora_atual = {0};
