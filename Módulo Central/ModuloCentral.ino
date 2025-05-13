@@ -11,12 +11,9 @@
 #include <Wire.h>
 #include <LoRa.h>
 #include <SPI.h>
-#include <SoftwareSerial.h>
 
 /* Definicoes para comunicação com o display */
-const byte rxPin = 16;  //rx2
-const byte txPin = 17;  //tx2
-SoftwareSerial mySerial(rxPin, txPin);
+HardwareSerial DisplaySerial(2);  // UART2
 
 constexpr uint8_t DISP_ID_VELOCIDADE = 0x61;
 constexpr uint8_t DISP_ID_RPM        = 0x62;
@@ -58,7 +55,7 @@ TDadosLora dados_lora_anterior = {0};
 void setup() {
   
   Serial.begin(115200);
-  mySerial.begin(38400);
+  DisplaySerial.begin(9600, SERIAL_8N1, 16, 17);  // 8N1, RX=16, TX=17
 
   initializeCAN();  // Configura a comunicação CAN
 
@@ -218,7 +215,7 @@ void initializeCAN() {
 void envia_para_display(unsigned char* pacote, unsigned int valor) {
   pacote[6] = highByte(valor);
   pacote[7] = lowByte(valor);
-  mySerial.write(pacote, 8);
+  DisplaySerial.write(pacote, 8);
 }
 
 bool init_comunicacao_lora(void){
@@ -242,7 +239,7 @@ bool init_comunicacao_lora(void){
   return status_init;
 }
 
-/*OUTRA ABORDAGEM MAIS LEVE
+/*ABORDAGEM MAIS LEVE
 montar o pacote dentro da própria função, recebendo apenas o ID do display e o valor. Assim, você não precisa declarar um array diferente para cada variável. Exemplo:
 
 void envia_para_display(uint8_t id_display, unsigned int valor) {
