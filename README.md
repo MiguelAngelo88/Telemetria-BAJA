@@ -77,7 +77,7 @@ https://drive.google.com/drive/folders/12pf-uwY25VX4iIIwu48RXH_IE0EbaV6g?usp=sha
 | Velocidade | 0x15(CAN) e 0x61(DISPLAY) | 	0 a 70 km/h | 1 byte | uint8_t |
 | Nível da bateria | 0x17(CAN) e 0x65(DISPLAY) | 	0 a 100% | 1 byte | uint8_t |
 | Temperatura do freio | 0x16(CAN) e 0x63(DISPLAY) | 	0 a 500°C | 2 bytes | uint16_t |
-| Temperatura da CVT | 0x19(CAN) e 0x64(DISPLAY) | 	0 a 200°C | 1 byte | uint8_t |
+| Temperatura da CVT | 0x19(CAN) e 0x64(DISPLAY) | 	0 a 300°C | 2 bytes | uint16_t |
 | Nível de combustível | 0x20(CAN) e 0x66(DISPLAY) | 	0 a 100% | 1 byte | uint8_t |
 | RPM do motor | 0x18(CAN) e 0x62(DISPLAY) | 	0 a 5000 rpm | 2 bytes | uint16_t |
 
