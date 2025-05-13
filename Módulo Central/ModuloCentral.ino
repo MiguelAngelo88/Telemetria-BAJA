@@ -3,6 +3,7 @@
   Autor: Miguel Ângelo de Lacerda Silva
   Data: 2025
   Descrição: Leitura de dados via CAN, envio para display TFT e transmissão via rádio LoRa.
+  Hardware: Heltec Wifi LoRa 32(V2)
 */
 
 #include <CAN.h>
@@ -37,7 +38,8 @@ constexpr int MISO_LORA  = 19;
 constexpr int MOSI_LORA  = 27;
 constexpr int RESET_LORA = 14;
 constexpr int SS_LORA    = 18;
-constexpr int TX_POWER   = 20; // dBm
+constexpr int LORA_DIO0  = 26;
+constexpr int TX_POWER   = 15; // dBm
 constexpr float BAND     = 915E6;
 
 /* Struct de dados LoRa */
@@ -56,7 +58,7 @@ TDadosLora dados_lora_anterior = {0};
 void setup() {
   
   Serial.begin(115200);
-  mySerial.begin(115200);
+  mySerial.begin(38400);
 
   initializeCAN();  // Configura a comunicação CAN
 
@@ -92,7 +94,7 @@ void loop() {
       //Atualiza o valor da velocidade para a comunicação LoRa
       dados_lora_atual.velocidadeLoRa = velocidade;
 
-      } else if(CAN.packetId() == 0x16){ //ID15->Temperatura do freio
+      } else if(CAN.packetId() == 0x16){ //ID16->Temperatura do freio
       int freioHighByte = CAN.read();  // Primeiro byte (mais significativo)
       int freioLowByte = CAN.read();   // Segundo byte (menos significativo)
 
@@ -176,7 +178,10 @@ void loop() {
     } else {
       Serial.println("Pacote com tamanho ou formato inválido.");
     }
-  }
+  }else {
+  Serial.printf("Pacote inválido ou de tamanho inesperado. ID: 0x%X, Size: %d\n", CAN.packetId(), packetSize);
+  while (CAN.available()) CAN.read(); // Limpa buffer CAN
+}
  }
   envia_dados_lora();
 }
@@ -210,33 +215,31 @@ void initializeCAN() {
   }
 }
 
-bool init_comunicacao_lora(void){
-  bool status_init = false;
-  Serial.println("[LoRa Sender] Tentando iniciar comunicacao com o radio LoRa...");
-  SPI.begin(SCK_LORA, MISO_LORA, MOSI_LORA, SS_PIN_LORA);
-  LoRa.setPins(SS_PIN_LORA, RESET_PIN_LORA, LORA_DEFAULT_DIO0_PIN);
-
-  if (!LoRa.begin(BAND))
-  {
-    Serial.println("[LoRa Sender] Comunicacao com o radio LoRa falhou. Nova tentativa em 1 segundo...");
-    delay(1000);
-    status_init = false;
-  }
-  else
-  {
-    /* Configura o ganho do receptor LoRa para 20dBm, o maior ganho possível (visando maior alcance possível) */
-    LoRa.setTxPower(HIGH_GAIN_LORA);
-    Serial.println("[LoRa Sender] Comunicacao com o radio LoRa ok");
-    status_init = true;
-  }
-
-  return status_init;
-}
-
 void envia_para_display(unsigned char* pacote, unsigned int valor) {
   pacote[6] = highByte(valor);
   pacote[7] = lowByte(valor);
   mySerial.write(pacote, 8);
+}
+
+bool init_comunicacao_lora(void){
+  bool status_init = false;
+  Serial.println("[LoRa Sender] Tentando iniciar comunicação com o rádio LoRa...");
+
+  SPI.begin(SCK_LORA, MISO_LORA, MOSI_LORA, SS_LORA);
+  LoRa.setPins(SS_LORA, RESET_LORA, LORA_DIO0);
+
+  if (!LoRa.begin(BAND)) {
+    Serial.println("[LoRa Sender] Comunicação com o rádio LoRa falhou. Nova tentativa em 1 segundo...");
+    delay(1000);
+    status_init = false;
+  } else {
+    /* Configura o ganho do transmissor LoRa para 20dBm */
+    LoRa.setTxPower(TX_POWER);
+    Serial.println("[LoRa Sender] Comunicação com o rádio LoRa ok");
+    status_init = true;
+  }
+
+  return status_init;
 }
 
 /*OUTRA ABORDAGEM MAIS LEVE
