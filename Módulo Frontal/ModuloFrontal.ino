@@ -1,3 +1,12 @@
+/*
+  Telemetria Veicular - Módulo Frontal
+  Autor: Miguel Ângelo de Lacerda Silva
+  Data: 2025
+  Descrição: Processamento da Velocidade, Nível da Bateria e Temperatura do freio, e
+    envio via barramento CAN
+  Hardware: Heltec Wifi LoRa 32(V2)
+*/
+
 #include <CAN.h>  // Inclui a biblioteca CAN
 #include "max6675.h" //Sensor da temp do freio
 
@@ -15,14 +24,21 @@ const float wheelRadius = 0.27; // Raio da roda em metros
 MAX6675 thermocouple(thermoCLK, thermoCS, thermoDO);//declara o objeto MAX6675
 
 // Definições e variáveis para a SENSOR DE TENSÃO DA BATERIA
-#define batteryPin 12
+#define batteryPin     36
+#define REF_VOLTAGE    3.3
+#define ADC_RESOLUTION 4095.0
+#define R1             30000.0 // resistor values in voltage sensor (in ohms)
+#define R2             7500.0  // resistor values in voltage sensor (in ohms)
 
 void setup() {
-  Serial.begin(115200);  // Inicia a comunicação serial
-  while (!Serial);
+  pinMode(15, INPUT); // Alta impedância inicialmente para garantir que fique em HIGH
+  delay(300); // Aguarda o boot completo e estabilização
 
+  Serial.begin(115200);  // Inicia a comunicação serial
+
+  initializeSensors();
   initializeCAN();  // Configura a comunicação CAN
-  initializeSensors();  // Configura o sensor indutivo
+  
 }
 
 void loop() {
@@ -53,6 +69,7 @@ void initializeSensors() {
   //RPM
   pinMode(wheelSensorPin, INPUT_PULLUP);  
   attachInterrupt(digitalPinToInterrupt(wheelSensorPin), handleWheelInterrupt, FALLING);
+  Serial.println("Sensores inicializados com sucesso!");
 }
 
 void processVelocity() {
@@ -110,13 +127,20 @@ void processTempFreio() {
 }
 
 void processBatteryLevel() {
-  // Leitura da tensão da bateria
-  float batteryVoltage = analogRead(batteryPin) * 5 * 5.0 / 1023;
+  // read the analog input
+  int adc_value = analogRead(batteryPin);
+
+  // determine voltage at adc input
+  float voltage_adc = ((float)adc_value * REF_VOLTAGE) / ADC_RESOLUTION;
+
+  // calculate voltage at the sensor input
+  float batteryVoltage = voltage_adc * (R1 + R2) / R2;
 
   // Vetores com os limites das tensões e seus respectivos níveis de carga
   const float voltageLevels[] = {12.60, 12.50, 12.42, 12.32, 12.20, 12.06, 11.90, 11.75, 11.58, 11.31, 10.50};
   const int chargeLevels[] = {100, 90, 80, 70, 60, 50, 40, 30, 20, 10, 0};
 
+  
   // Determinação do nível de carga
   int batteryLevel = 0;
   for (int i = 0; i < sizeof(voltageLevels) / sizeof(voltageLevels[0]); i++) {
