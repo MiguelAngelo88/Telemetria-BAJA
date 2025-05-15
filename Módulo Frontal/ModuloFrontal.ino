@@ -11,24 +11,29 @@
 #include "max6675.h" //Sensor da temp do freio
 
 // Definições e variáveis para a Velocidade
-#define  wheelSensorPin  13  // Pino do sensor indutivo
+const int  wheelSensorPin         = 13;  // Pino do sensor indutivo
 volatile unsigned long pulseCount = 0;  // Contador de pulsos
-unsigned long lastTime = 0;
-const unsigned long interval = 1000;  // Intervalo de tempo para cálculo do RPM (1 segundo)
-const float wheelRadius = 0.27; // Raio da roda em metros 
+unsigned long lastTime            = 0;
+const unsigned long interval      = 1000;  // Intervalo de tempo para cálculo do RPM (1 segundo)
+const float wheelRadius           = 0.27; // Raio da roda em metros 
 
 // Definições e variáveis para a TEMPERATURA DO FREIO
-#define thermoDO  19
-#define thermoCS  23
-#define thermoCLK  5
+const int thermoDO  = 19;
+const int thermoCS  = 23;
+const int thermoCLK = 5;
 MAX6675 thermocouple(thermoCLK, thermoCS, thermoDO);//declara o objeto MAX6675
 
 // Definições e variáveis para a SENSOR DE TENSÃO DA BATERIA
-#define batteryPin     36
-#define REF_VOLTAGE    3.3
-#define ADC_RESOLUTION 4095.0
-#define R1             30000.0 // resistor values in voltage sensor (in ohms)
-#define R2             7500.0  // resistor values in voltage sensor (in ohms)
+const int batteryPin     = 36;
+const float REF_VOLTAGE  = 3.3;
+const float ADC_RESOLUTION = 4095.0;
+const float R1             = 30000.0; // resistor values in voltage sensor (in ohms)
+const float R2             = 7500.0;  // resistor values in voltage sensor (in ohms)
+
+/*Definição dos IDs da variáveis CAN*/
+const uint8_t CAN_ID_VELOCIDADE = 0x15;
+const uint8_t CAN_ID_BATERIA = 0x17;
+const uint8_t CAN_ID_FREIO = 0x16;
 
 void setup() {
   pinMode(15, INPUT); // Alta impedância inicialmente para garantir que fique em HIGH
@@ -98,15 +103,17 @@ void processVelocity() {
     Serial.println(" km/h");
 
     // Envia o RPM via CAN
-    CAN.beginPacket(0x15);  // ID em hexadecimal
+    CAN.beginPacket(CAN_ID_VELOCIDADE);  // ID em hexadecimal
     CAN.write((speedInt >> 8) & 0xFF);  // Envia os 8 bits mais significativos
     CAN.write(speedInt & 0xFF);  // Envia os 8 bits menos significativos
-    CAN.endPacket();  // Encerra o pacote
-    Serial.println("Velocidade enviado via CAN.");
+    // Tenta encerrar o pacote
+    if (!CAN.endPacket()) {
+    Serial.println("Falha ao enviar pacote CAN de velocidade!");
+    }
+    Serial.println("Velocidade enviada via CAN.");
    
     pulseCount = 0; // Reseta o contador de pulsos
     lastTime = currentTime; // Atualiza o tempo
-
 
     attachInterrupt(digitalPinToInterrupt(wheelSensorPin), handleWheelInterrupt, FALLING); // Reabilita a interrupção
   }
@@ -122,11 +129,13 @@ void processTempFreio() {
   Serial.println(" °C");
   
   // Envia a temperatura do freio via CAN
-  CAN.beginPacket(0x16);  // ID em hexadecimal
+  CAN.beginPacket(CAN_ID_FREIO);  // ID em hexadecimal
   CAN.write((tempFreio >> 8) & 0xFF);  // Envia os 8 bits mais significativos
   CAN.write(tempFreio & 0xFF);        // Envia os 8 bits menos significativos
-  CAN.endPacket();  // Encerra o pacote
-  
+  // Tenta encerrar o pacote
+  if (!CAN.endPacket()) {
+  Serial.println("Falha ao enviar pacote CAN de freio!");
+  } 
   Serial.println("Temperatura do freio enviada via CAN.");
 }
 
@@ -143,7 +152,6 @@ void processBatteryLevel() {
   // Vetores com os limites das tensões e seus respectivos níveis de carga
   const float voltageLevels[] = {12.60, 12.50, 12.42, 12.32, 12.20, 12.06, 11.90, 11.75, 11.58, 11.31, 10.50};
   const int chargeLevels[] = {100, 90, 80, 70, 60, 50, 40, 30, 20, 10, 0};
-
   
   // Determinação do nível de carga
   int batteryLevel = 0;
@@ -155,8 +163,12 @@ void processBatteryLevel() {
   }
 
   // Envio do nível da bateria via CAN
-  CAN.beginPacket(0x17);  // ID em hexadecimal
+  CAN.beginPacket(CAN_ID_BATERIA);  // ID em hexadecimal
   CAN.write((batteryLevel >> 8) & 0xFF);  // Envia os 8 bits mais significativos
   CAN.write(batteryLevel & 0xFF);        // Envia os 8 bits menos significativos
-  CAN.endPacket();  // Encerra o pacote
+  // Tenta encerrar o pacote
+  if (!CAN.endPacket()) {
+  Serial.println("Falha ao enviar pacote CAN de bateria!");
+}
+  Serial.println("Nivel de bateria enviado via CAN.");
 }
