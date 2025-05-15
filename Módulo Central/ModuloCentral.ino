@@ -11,9 +11,20 @@
 #include <Wire.h>
 #include <LoRa.h>
 #include <SPI.h>
+#include <SoftwareSerial.h>
+
+/* ----------- IDs CAN --------------*/
+const uint8_t CAN_ID_VELOCIDADE = 0x15;
+const uint8_t CAN_ID_BATERIA = 0x17;
+const uint8_t CAN_ID_FREIO = 0x16;
+const uint8_t CAN_ID_CVT = 0x19;
+const uint8_t CAN_ID_COMBUSTIVEL = 0x20;
+const uint8_t CAN_ID_RPM = 0x18;
 
 /* Definicoes para comunicação com o display */
-HardwareSerial DisplaySerial(2);  // UART2
+const byte rxPin = 16;  //rx2
+const byte txPin = 17;  //tx2
+SoftwareSerial DisplaySerial(rxPin, txPin);
 
 constexpr uint8_t DISP_ID_VELOCIDADE = 0x61;
 constexpr uint8_t DISP_ID_RPM        = 0x62;
@@ -55,7 +66,7 @@ TDadosLora dados_lora_anterior = {0};
 void setup() {
   
   Serial.begin(115200);
-  DisplaySerial.begin(9600, SERIAL_8N1, 16, 17);  // 8N1, RX=16, TX=17
+  DisplaySerial.begin(115200);
 
   initializeCAN();  // Configura a comunicação CAN
 
@@ -75,7 +86,7 @@ void loop() {
     // Verifica se o pacote contém dados
     if (!CAN.packetRtr() && packetSize == 2) {  // Deve conter exatamente 2 bytes
 
-      if (CAN.packetId() == 0x15){ //ID 0x15->Velocidade
+      if (CAN.packetId() == CAN_ID_VELOCIDADE){
       int velocidadeHighByte = CAN.read();  // Primeiro byte (mais significativo)
       int velocidadeLowByte = CAN.read();   // Segundo byte (menos significativo)
 
@@ -87,12 +98,12 @@ void loop() {
       Serial.println(velocidade);
 
       //Envia o valor da velocidade para o display
-      envia_para_display(vel, velocidade);
+      envia_para_display(DISP_ID_VELOCIDADE, velocidade);
 
       //Atualiza o valor da velocidade para a comunicação LoRa
       dados_lora_atual.velocidadeLoRa = velocidade;
 
-      } else if(CAN.packetId() == 0x16){ //ID16->Temperatura do freio
+      } else if(CAN.packetId() == CAN_ID_FREIO){
       int freioHighByte = CAN.read();  // Primeiro byte (mais significativo)
       int freioLowByte = CAN.read();   // Segundo byte (menos significativo)
 
@@ -104,12 +115,12 @@ void loop() {
       Serial.println(tempFreio);
 
       //Envia o valor da temp do freio para o display
-      envia_para_display(freio, tempFreio);
+      envia_para_display(DISP_ID_FREIO, tempFreio);
 
       //Atualiza o valor da temp do freio para a comunicação LoRa
       dados_lora_atual.freioLoRa = tempFreio;
 
-      } else if(CAN.packetId() == 0x17){ //ID17->Nível da bateria
+      } else if(CAN.packetId() == CAN_ID_BATERIA){
       int bateriaHighByte = CAN.read();  // Primeiro byte (mais significativo)
       int bateriaLowByte = CAN.read();   // Segundo byte (menos significativo)
 
@@ -121,12 +132,12 @@ void loop() {
       Serial.println(NivelBateria);
 
       //Envia o valor do nivel da bateria para o display
-      envia_para_display(bat, NivelBateria);
+      envia_para_display(DISP_ID_BATERIA, NivelBateria);
 
       //Atualiza o valor do nivel da bateria para a comunicação LoRa
       dados_lora_atual.bateriaLoRa = NivelBateria;
 
-      } else if(CAN.packetId() == 0x18){ //ID18->RPM
+      } else if(CAN.packetId() == CAN_ID_RPM){
       int rpmHighByte = CAN.read();  // Primeiro byte (mais significativo)
       int rpmLowByte = CAN.read();   // Segundo byte (menos significativo)
 
@@ -138,16 +149,16 @@ void loop() {
       Serial.println(RPM);
 
       //Envia o valor do RPM para o display
-      envia_para_display(rpm, RPM);
+      envia_para_display(DISP_ID_RPM, RPM);
 
       //Atualiza o valor do RPM para a comunicação LoRa
       dados_lora_atual.rpmLoRa = RPM;
 
-      } else if(CAN.packetId() == 0x19){ //ID19->Temperatura da CVT
+      } else if(CAN.packetId() == CAN_ID_CVT){
       int cvtHighByte = CAN.read();  // Primeiro byte (mais significativo)
       int cvtLowByte = CAN.read();   // Segundo byte (menos significativo)
 
-      // Reconstrói o valor do Nivel da Bateria
+      // Reconstrói o valor da temp da CVT
       unsigned int tempCVT = (cvtHighByte << 8) | cvtLowByte;
 
       // Exibe o RPM no monitor serial
@@ -155,20 +166,24 @@ void loop() {
       Serial.println(tempCVT);
 
       //Envia o valor do RPM para o display
-      envia_para_display(cvt, tempCVT);
+      envia_para_display(DISP_ID_CVT, tempCVT);
 
       //Atualiza o valor da temp da cvt para a comunicação LoRa
       dados_lora_atual.cvtLoRa = tempCVT;
 
-    } else if(CAN.packetId() == 0x20){ //ID20->Nível de combustível
-      int nivelCombustivel = CAN.read(); 
+    } else if(CAN.packetId() == CAN_ID_COMBUSTIVEL){
+      int combHighByte = CAN.read();  // Primeiro byte (mais significativo)
+      int combLowByte = CAN.read();   // Segundo byte (menos significativo)
 
+      // Reconstrói o valor do nivel de combustivel
+      unsigned int nivelCombustivel = (combHighByte << 8) | combLowByte;
+    
       // Exibe o nivel de combustivel no monitor serial
       Serial.print("NivelCombustivel recebido: ");
       Serial.println(nivelCombustivel);
 
       //Envia o nivel de combustivel para o display
-      envia_para_display(comb, nivelCombustivel);
+      envia_para_display(DISP_ID_COMBUSTIVEL, nivelCombustivel);
 
       //Atualiza o valor do nivel de combustivel para a comunicação LoRa
       dados_lora_atual.combustivelLoRa = nivelCombustivel; 
@@ -217,13 +232,9 @@ void initializeCAN() {
   Serial.println("Controlador CAN inicializado com sucesso!");
 }
 
-void envia_para_display(unsigned char* pacote, unsigned int valor) {
-  pacote[6] = highByte(valor);
-  pacote[7] = lowByte(valor);
+void envia_para_display(uint8_t id_display, unsigned int valor) {
+  unsigned char pacote[8] = { 0x5a, 0xa5, 0x05, 0x82, id_display, 0x00, highByte(valor), lowByte(valor) };
   DisplaySerial.write(pacote, 8);
-  Serial.printf("[Display Enviado] Pacote: %u\n",
-                valor);
-
 }
 
 bool init_comunicacao_lora(){
@@ -246,16 +257,3 @@ bool init_comunicacao_lora(){
 
   return status_init;
 }
-
-/*ABORDAGEM MAIS LEVE
-montar o pacote dentro da própria função, recebendo apenas o ID do display e o valor. Assim, você não precisa declarar um array diferente para cada variável. Exemplo:
-
-void envia_para_display(uint8_t id_display, unsigned int valor) {
-  unsigned char pacote[8] = { 0x5a, 0xa5, 0x05, 0x82, id_display, 0x00, highByte(valor), lowByte(valor) };
-  mySerial.write(pacote, 8);
-}
-
-E aí você chamaria assim:
-envia_para_display(DISP_ID_VELOCIDADE, velocidade);
-
-*/
