@@ -10,27 +10,31 @@
 #include <CAN.h>  // Inclui a biblioteca CAN
 #include "max6675.h" //Sensor da temp do freio
 
-// Definições e variáveis para a Velocidade
-const int  wheelSensorPin         = 13;  // Pino do sensor indutivo
-volatile unsigned long pulseCount = 0;  // Contador de pulsos
-unsigned long lastTime            = 0;
-const unsigned long interval      = 1000;  // Intervalo de tempo para cálculo do RPM (1 segundo)
-const float wheelRadius           = 0.27; // Raio da roda em metros 
+// ---- VELOCIDADE ----
+const int wheelSensorPin = 13;
+volatile unsigned long pulseCount = 0;
+unsigned long lastVelocidadeTime = 0;
+const unsigned long intervaloVelocidade = 1000;
+const float wheelRadius = 0.27;
 
-// Definições e variáveis para a TEMPERATURA DO FREIO
+// ---- TEMPERATURA DO FREIO ----
 const int thermoDO  = 19;
 const int thermoCS  = 23;
 const int thermoCLK = 5;
-MAX6675 thermocouple(thermoCLK, thermoCS, thermoDO);//declara o objeto MAX6675
+MAX6675 thermocouple(thermoCLK, thermoCS, thermoDO);
+unsigned long lastFreioTime = 0;
+const unsigned long intervaloFreio = 1000;
 
-// Definições e variáveis para a SENSOR DE TENSÃO DA BATERIA
-const int batteryPin     = 36;
-const float REF_VOLTAGE  = 3.3;
+// ---- NÍVEL DA BATERIA ----
+const int batteryPin = 36;
+const float REF_VOLTAGE = 3.3;
 const float ADC_RESOLUTION = 4095.0;
-const float R1             = 30000.0; // resistor values in voltage sensor (in ohms)
-const float R2             = 7500.0;  // resistor values in voltage sensor (in ohms)
+const float R1 = 30000.0;
+const float R2 = 7500.0;
+unsigned long lastBateriaTime = 0;
+const unsigned long intervaloBateria = 2000;
 
-/*Definição dos IDs da variáveis CAN*/
+// ---- IDs CAN ----
 const uint8_t CAN_ID_VELOCIDADE = 0x15;
 const uint8_t CAN_ID_BATERIA = 0x17;
 const uint8_t CAN_ID_FREIO = 0x16;
@@ -43,16 +47,25 @@ void setup() {
 
   initializeSensors();
   initializeCAN();  // Configura a comunicação CAN
-  
 }
 
 void loop() {
+  unsigned long currentMillis = millis();
 
-  processVelocity();  // Processa o cálculo e envio do RPM
-  processTempFreio(); // Processa o cálculo e envio da Temp do freio
-  processBatteryLevel(); // Processa o cálculo e envio do nível da bateria
+  if (currentMillis - lastVelocidadeTime >= intervaloVelocidade) {
+    processVelocity();
+    lastVelocidadeTime = currentMillis;
+  }
 
-  delay(500);
+  if (currentMillis - lastFreioTime >= intervaloFreio) {
+    processTempFreio();
+    lastFreioTime = currentMillis;
+  }
+
+  if (currentMillis - lastBateriaTime >= intervaloBateria) {
+    processBatteryLevel();
+    lastBateriaTime = currentMillis;
+  }
 }
 
 // Função de interrupção para contar pulsos do sensor indutivo
@@ -82,20 +95,13 @@ void initializeSensors() {
 }
 
 void processVelocity() {
-  unsigned long currentTime = millis();
- 
-  // Calcula a velocidade a cada segundo
-  if (currentTime - lastTime >= interval) {
     detachInterrupt(digitalPinToInterrupt(wheelSensorPin)); // Desabilita a interrupção temporariamente
    
     // Calcula o número de rotações
     float rotations = pulseCount; // Supondo 1 pulso por rotação
-    // Calcula a velocidade angular (ω = 2π * rotações / tempo)
-    float omega = (2.0 * PI * rotations) / (interval / 1000.0); // rad/s
-    // Calcula a velocidade linear (v = ω * r)
-    float speed = omega * wheelRadius; // m/s
-    // Convertendo para km/h
-    float speedKmh = speed * 3.6;
+    float omega = (2.0 * PI * rotations) / (intervaloVelocidade / 1000.0); // ω = 2π * rotações / tempo
+    float speed = omega * wheelRadius; // v = ω * r
+    float speedKmh = speed * 3.6; // Convertendo para km/h
     int speedInt = (int)speedKmh; // Armazena apenas a parte inteira da velocidade
    
     Serial.print("Velocidade: ");
@@ -113,10 +119,7 @@ void processVelocity() {
     Serial.println("Velocidade enviada via CAN.");
    
     pulseCount = 0; // Reseta o contador de pulsos
-    lastTime = currentTime; // Atualiza o tempo
-
     attachInterrupt(digitalPinToInterrupt(wheelSensorPin), handleWheelInterrupt, FALLING); // Reabilita a interrupção
-  }
 }
 
 void processTempFreio() {
