@@ -55,13 +55,17 @@ void IRAM_ATTR handleWheelInterrupt() {
   pulseCount++;
 }
 
-// Inicializa a comunicação CAN
 void initializeCAN() {
-  CAN.setPins(15, 4);
-  Serial.println("Inicializando o Transmissor CAN");
-  if (!CAN.begin(500E3)) {
-    Serial.println("Falha ao iniciar o controlador CAN");
+  CAN.setPins(15, 4); // Define os pinos para RX e TX do CAN
+  Serial.println("Tentando inicializar o controlador CAN...");
+  
+  // Tenta inicializar o CAN repetidamente até obter sucesso
+  while (!CAN.begin(500E3)) {
+    Serial.println("Falha ao iniciar o controlador CAN. Tentando novamente em 1 segundo...");
+    delay(1000); // Aguarda 1 segundo antes de tentar novamente
   }
+  
+  Serial.println("Controlador CAN inicializado com sucesso!");
 }
 
 // Inicializa os sensores e configura a interrupções
