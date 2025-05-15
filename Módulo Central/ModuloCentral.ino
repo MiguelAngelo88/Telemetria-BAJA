@@ -64,6 +64,7 @@ void setup() {
 }
 
 void loop() {
+
   // Tenta analisar o pacote
   int packetSize = CAN.parsePacket();
 
@@ -203,22 +204,29 @@ void envia_dados_lora() {
                 dados_lora_atual.combustivelLoRa);
 }
 
-// Inicializa a comunicação CAN
 void initializeCAN() {
-  CAN.setPins(15, 4);
-  Serial.println("Inicializando o Transmissor CAN");
-  if (!CAN.begin(500E3)) {
-    Serial.println("Falha ao iniciar o controlador CAN");
+  CAN.setPins(15, 4); // Define os pinos para RX e TX do CAN
+  Serial.println("Tentando inicializar o controlador CAN...");
+  
+  // Tenta inicializar o CAN repetidamente até obter sucesso
+  while (!CAN.begin(500E3)) {
+    Serial.println("Falha ao iniciar o controlador CAN. Tentando novamente em 1 segundo...");
+    delay(1000); // Aguarda 1 segundo antes de tentar novamente
   }
+  
+  Serial.println("Controlador CAN inicializado com sucesso!");
 }
 
 void envia_para_display(unsigned char* pacote, unsigned int valor) {
   pacote[6] = highByte(valor);
   pacote[7] = lowByte(valor);
   DisplaySerial.write(pacote, 8);
+  Serial.printf("[Display Enviado] Pacote: %u\n",
+                valor);
+
 }
 
-bool init_comunicacao_lora(void){
+bool init_comunicacao_lora(){
   bool status_init = false;
   Serial.println("[LoRa Sender] Tentando iniciar comunicação com o rádio LoRa...");
 
