@@ -54,7 +54,7 @@ Este repositório documenta a arquitetura e implementação do sistema de teleme
 | GPIO4         | CAN TX                            |
 | GPIO15        | CAN RX                            |
 | GPIO13        | Sensor indutivo (velocidade)      |
-| GPIO12        | Sensor de tensão                  |
+| GPIO36        | Sensor de tensão                  |
 | GPIO19        | MAX6675 SO                        |
 | GPIO23        | MAX6675 CS                        |
 | GPIO5         | MAX6675 SCK                       |
