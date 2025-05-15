@@ -75,127 +75,71 @@ void setup() {
 }
 
 void loop() {
-
-  // Tenta analisar o pacote
   int packetSize = CAN.parsePacket();
 
-  if (packetSize) {  // Se um pacote for recebido
+  if (packetSize) {
     Serial.print("Pacote recebido com ID 0x");
     Serial.println(CAN.packetId(), HEX);
 
-    // Verifica se o pacote contém dados
-    if (!CAN.packetRtr() && packetSize == 2) {  // Deve conter exatamente 2 bytes
+    if (!CAN.packetRtr() && packetSize == 2) {
+      int highByte = CAN.read();
+      int lowByte = CAN.read();
+      unsigned int valor = (highByte << 8) | lowByte;
 
-      if (CAN.packetId() == CAN_ID_VELOCIDADE){
-      int velocidadeHighByte = CAN.read();  // Primeiro byte (mais significativo)
-      int velocidadeLowByte = CAN.read();   // Segundo byte (menos significativo)
+      switch (CAN.packetId()) {
+        case CAN_ID_VELOCIDADE:
+          Serial.print("Velocidade recebido: ");
+          Serial.println(valor);
+          envia_para_display(DISP_ID_VELOCIDADE, valor);
+          dados_lora_atual.velocidadeLoRa = valor;
+          break;
 
-      // Reconstrói o valor da Velocidade
-      unsigned int velocidade = (velocidadeHighByte << 8) | velocidadeLowByte;
+        case CAN_ID_FREIO:
+          Serial.print("TempFreio recebido: ");
+          Serial.println(valor);
+          envia_para_display(DISP_ID_FREIO, valor);
+          dados_lora_atual.freioLoRa = valor;
+          break;
 
-      // Exibe a velocidade no monitor serial
-      Serial.print("Velocidade recebido: ");
-      Serial.println(velocidade);
+        case CAN_ID_BATERIA:
+          Serial.print("NivelBateria recebido: ");
+          Serial.println(valor);
+          envia_para_display(DISP_ID_BATERIA, valor);
+          dados_lora_atual.bateriaLoRa = valor;
+          break;
 
-      //Envia o valor da velocidade para o display
-      envia_para_display(DISP_ID_VELOCIDADE, velocidade);
+        case CAN_ID_RPM:
+          Serial.print("RPM recebido: ");
+          Serial.println(valor);
+          envia_para_display(DISP_ID_RPM, valor);
+          dados_lora_atual.rpmLoRa = valor;
+          break;
 
-      //Atualiza o valor da velocidade para a comunicação LoRa
-      dados_lora_atual.velocidadeLoRa = velocidade;
+        case CAN_ID_CVT:
+          Serial.print("tempCVT recebido: ");
+          Serial.println(valor);
+          envia_para_display(DISP_ID_CVT, valor);
+          dados_lora_atual.cvtLoRa = valor;
+          break;
 
-      } else if(CAN.packetId() == CAN_ID_FREIO){
-      int freioHighByte = CAN.read();  // Primeiro byte (mais significativo)
-      int freioLowByte = CAN.read();   // Segundo byte (menos significativo)
+        case CAN_ID_COMBUSTIVEL:
+          Serial.print("NivelCombustivel recebido: ");
+          Serial.println(valor);
+          envia_para_display(DISP_ID_COMBUSTIVEL, valor);
+          dados_lora_atual.combustivelLoRa = valor;
+          break;
 
-      // Reconstrói o valor da Temp do freio
-      unsigned int tempFreio = (freioHighByte << 8) | freioLowByte;
-
-      // Exibe a temp do freio no monitor serial
-      Serial.print("TempFreio recebido: ");
-      Serial.println(tempFreio);
-
-      //Envia o valor da temp do freio para o display
-      envia_para_display(DISP_ID_FREIO, tempFreio);
-
-      //Atualiza o valor da temp do freio para a comunicação LoRa
-      dados_lora_atual.freioLoRa = tempFreio;
-
-      } else if(CAN.packetId() == CAN_ID_BATERIA){
-      int bateriaHighByte = CAN.read();  // Primeiro byte (mais significativo)
-      int bateriaLowByte = CAN.read();   // Segundo byte (menos significativo)
-
-      // Reconstrói o valor do Nivel da Bateria
-      unsigned int NivelBateria = (bateriaHighByte << 8) | bateriaLowByte;
-
-      // Exibe o nivel da bateria no monitor serial
-      Serial.print("NivelBateria recebido: ");
-      Serial.println(NivelBateria);
-
-      //Envia o valor do nivel da bateria para o display
-      envia_para_display(DISP_ID_BATERIA, NivelBateria);
-
-      //Atualiza o valor do nivel da bateria para a comunicação LoRa
-      dados_lora_atual.bateriaLoRa = NivelBateria;
-
-      } else if(CAN.packetId() == CAN_ID_RPM){
-      int rpmHighByte = CAN.read();  // Primeiro byte (mais significativo)
-      int rpmLowByte = CAN.read();   // Segundo byte (menos significativo)
-
-      // Reconstrói o valor do RPM
-      unsigned int RPM = (rpmHighByte << 8) | rpmLowByte;
-
-      // Exibe o RPM no monitor serial
-      Serial.print("RPM recebido: ");
-      Serial.println(RPM);
-
-      //Envia o valor do RPM para o display
-      envia_para_display(DISP_ID_RPM, RPM);
-
-      //Atualiza o valor do RPM para a comunicação LoRa
-      dados_lora_atual.rpmLoRa = RPM;
-
-      } else if(CAN.packetId() == CAN_ID_CVT){
-      int cvtHighByte = CAN.read();  // Primeiro byte (mais significativo)
-      int cvtLowByte = CAN.read();   // Segundo byte (menos significativo)
-
-      // Reconstrói o valor da temp da CVT
-      unsigned int tempCVT = (cvtHighByte << 8) | cvtLowByte;
-
-      // Exibe o RPM no monitor serial
-      Serial.print("tempCVT recebido: ");
-      Serial.println(tempCVT);
-
-      //Envia o valor do RPM para o display
-      envia_para_display(DISP_ID_CVT, tempCVT);
-
-      //Atualiza o valor da temp da cvt para a comunicação LoRa
-      dados_lora_atual.cvtLoRa = tempCVT;
-
-    } else if(CAN.packetId() == CAN_ID_COMBUSTIVEL){
-      int combHighByte = CAN.read();  // Primeiro byte (mais significativo)
-      int combLowByte = CAN.read();   // Segundo byte (menos significativo)
-
-      // Reconstrói o valor do nivel de combustivel
-      unsigned int nivelCombustivel = (combHighByte << 8) | combLowByte;
-    
-      // Exibe o nivel de combustivel no monitor serial
-      Serial.print("NivelCombustivel recebido: ");
-      Serial.println(nivelCombustivel);
-
-      //Envia o nivel de combustivel para o display
-      envia_para_display(DISP_ID_COMBUSTIVEL, nivelCombustivel);
-
-      //Atualiza o valor do nivel de combustivel para a comunicação LoRa
-      dados_lora_atual.combustivelLoRa = nivelCombustivel; 
+        default:
+          Serial.println("ID CAN não reconhecido.");
+          break;
+      }
 
     } else {
-      Serial.println("Pacote com tamanho ou formato inválido.");
+      Serial.printf("Pacote inválido ou de tamanho inesperado. ID: 0x%X, Size: %d\n", CAN.packetId(), packetSize);
+      while (CAN.available()) CAN.read(); // Limpa buffer
     }
-  }else {
-  Serial.printf("Pacote inválido ou de tamanho inesperado. ID: 0x%X, Size: %d\n", CAN.packetId(), packetSize);
-  while (CAN.available()) CAN.read(); // Limpa buffer CAN
-}
- }
+  }
+
   envia_dados_lora();
 }
 
