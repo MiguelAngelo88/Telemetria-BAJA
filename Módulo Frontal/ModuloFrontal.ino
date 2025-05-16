@@ -9,6 +9,9 @@
 
 #include <CAN.h>  // Inclui a biblioteca CAN
 #include "max6675.h" //Sensor da temp do freio
+#include <esp_task_wdt.h>
+
+#define WDT_TIMEOUT_S 5 // Timeout de 5 segundos
 
 // ---- VELOCIDADE ----
 const int wheelSensorPin = 13;
@@ -44,12 +47,18 @@ void setup() {
   delay(300); // Aguarda o boot completo e estabilização
 
   Serial.begin(115200);  // Inicia a comunicação serial
+  Serial.println("Inicializando Task Watchdog Timer...");
+  esp_task_wdt_init(WDT_TIMEOUT_S, true); 
+  esp_task_wdt_add(NULL); 
+  Serial.println("Task Watchdog Timer inicializado.");
 
   initializeSensors();
   initializeCAN();  // Configura a comunicação CAN
 }
 
 void loop() {
+  esp_task_wdt_reset(); // Alimenta o WDT regularmente
+
   unsigned long currentMillis = millis();
 
   if (currentMillis - lastVelocidadeTime >= intervaloVelocidade) {
