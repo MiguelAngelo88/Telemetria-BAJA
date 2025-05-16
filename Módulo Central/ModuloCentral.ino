@@ -12,6 +12,9 @@
 #include <LoRa.h>
 #include <SPI.h>
 #include <SoftwareSerial.h>
+#include <esp_task_wdt.h>
+
+#define WDT_TIMEOUT_S 3 // Timeout de 3 segundos
 
 /* ----------- IDs CAN --------------*/
 const uint8_t CAN_ID_VELOCIDADE = 0x15;
@@ -66,6 +69,11 @@ TDadosLora dados_lora_anterior = {0};
 void setup() {
   
   Serial.begin(115200);
+  Serial.println("Inicializando Task Watchdog Timer...");
+  esp_task_wdt_init(WDT_TIMEOUT_S, true); // true para pânico (reset) em timeout
+  esp_task_wdt_add(NULL); // Adiciona a tarefa atual (loop) ao WDT
+  Serial.println("Task Watchdog Timer inicializado e tarefa atual adicionada.");
+
   DisplaySerial.begin(115200);
 
   initializeCAN();  // Configura a comunicação CAN
@@ -75,6 +83,9 @@ void setup() {
 }
 
 void loop() {
+  // Alimenta o WDT regularmente
+  esp_task_wdt_reset(); 
+
   int packetSize = CAN.parsePacket();
 
   if (packetSize) {
