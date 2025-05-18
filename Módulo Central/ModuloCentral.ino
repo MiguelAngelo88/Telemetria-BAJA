@@ -11,7 +11,7 @@
 #include <Wire.h>
 #include <LoRa.h>
 #include <SPI.h>
-#include <SoftwareSerial.h>
+//#include <SoftwareSerial.h>
 #include <esp_task_wdt.h>
 
 #define WDT_TIMEOUT_S 3 // Timeout de 3 segundos
@@ -25,9 +25,9 @@ const uint8_t CAN_ID_COMBUSTIVEL = 0x20;
 const uint8_t CAN_ID_RPM = 0x18;
 
 /* Definicoes para comunicação com o display */
-const byte rxPin = 16;  //rx2
-const byte txPin = 17;  //tx2
-SoftwareSerial DisplaySerial(rxPin, txPin);
+const byte rxPin = 16; //rx2
+const byte txPin = 17; //tx2
+HardwareSerial DisplaySerial(1);
 
 constexpr uint8_t DISP_ID_VELOCIDADE = 0x61;
 constexpr uint8_t DISP_ID_RPM        = 0x62;
@@ -74,7 +74,7 @@ void setup() {
   esp_task_wdt_add(NULL); // Adiciona a tarefa atual (loop) ao WDT
   Serial.println("Task Watchdog Timer inicializado e tarefa atual adicionada.");
 
-  DisplaySerial.begin(115200);
+  DisplaySerial.begin(115200, SERIAL_8N1, rxPin, txPin);
 
   initializeCAN();  // Configura a comunicação CAN
 
