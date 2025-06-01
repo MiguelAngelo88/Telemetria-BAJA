@@ -1,12 +1,11 @@
 import sys
-from PyQt5.QtWidgets import QApplication, QMainWindow, QVBoxLayout, \
-    QWidget  # QWidget foi adicionado, caso não estivesse
+from PyQt5.QtWidgets import QApplication, QMainWindow, QVBoxLayout, QWidget
 from Painel import Ui_painel
 from velocimetro_widget import VelocimetroWidget
 from rpm_widget import RPMWidget
 from bateria_widget import BateriaWidget
 from temperatura_widget import TemperaturaWidget
-from temperatura_freio_widget import TemperaturaFreioWidget  # <--- NOVA IMPORTAÇÃO AQUI
+from temperatura_freio_widget import TemperaturaFreioWidget
 
 
 class MainWindow(QMainWindow):
