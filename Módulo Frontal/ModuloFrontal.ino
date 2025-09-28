@@ -1,24 +1,33 @@
 /*
-  Telemetria Veicular - Módulo Frontal
+  Telemetria Veicular - Módulo de Aquisição
   Autor: Miguel Ângelo de Lacerda Silva
   Data: 2025
-  Descrição: Processamento da Velocidade, Nível da Bateria e Temperatura do freio, e
-    envio via barramento CAN
+  Descrição: Processamento da Velocidade, RPM do Motor, Nível da Bateria, 
+             Temperatura do freio e Temperatura da CVT, 
+             envio via barramento CAN
   Hardware: Heltec Wifi LoRa 32(V2)
 */
 
-#include <CAN.h>  // Inclui a biblioteca CAN
-#include "max6675.h" //Sensor da temp do freio
+#include <CAN.h>          // Biblioteca CAN
+#include "max6675.h"      // Sensor da temp do freio
+#include <Wire.h>
+#include <Adafruit_MLX90614.h> // Sensor IR da CVT
 #include <esp_task_wdt.h>
 
 #define WDT_TIMEOUT_S 5 // Timeout de 5 segundos
 
 // ---- VELOCIDADE ----
 const int wheelSensorPin = 13;
-volatile unsigned long pulseCount = 0;
+volatile unsigned long pulseCountVel = 0;
 unsigned long lastVelocidadeTime = 0;
 const unsigned long intervaloVelocidade = 1000;
 const float wheelRadius = 0.27;
+
+// ---- RPM DO MOTOR ----
+const int rpmPin = 17; // GPIO17 para o sensor de RPM
+volatile unsigned long pulseCountRPM = 0;
+unsigned long lastRPMTime = 0;
+const unsigned long intervaloRPM = 1000; // 1 segundo
 
 // ---- TEMPERATURA DO FREIO ----
 const int thermoDO  = 19;
@@ -27,6 +36,11 @@ const int thermoCLK = 5;
 MAX6675 thermocouple(thermoCLK, thermoCS, thermoDO);
 unsigned long lastFreioTime = 0;
 const unsigned long intervaloFreio = 1000;
+
+// ---- TEMPERATURA DA CVT (MLX90614) ----
+Adafruit_MLX90614 mlx = Adafruit_MLX90614();
+unsigned long lastCVTTime = 0;
+const unsigned long intervaloCVT = 1000;
 
 // ---- NÍVEL DA BATERIA ----
 const int batteryPin = 36;
@@ -39,25 +53,27 @@ const unsigned long intervaloBateria = 2000;
 
 // ---- IDs CAN ----
 const uint8_t CAN_ID_VELOCIDADE = 0x15;
-const uint8_t CAN_ID_BATERIA = 0x17;
-const uint8_t CAN_ID_FREIO = 0x16;
+const uint8_t CAN_ID_FREIO      = 0x16;
+const uint8_t CAN_ID_BATERIA    = 0x17;
+const uint8_t CAN_ID_RPM        = 0x18;
+const uint8_t CAN_ID_CVT        = 0x19;
 
 void setup() {
-  pinMode(15, INPUT); // Alta impedância inicialmente para garantir que fique em HIGH
-  delay(300); // Aguarda o boot completo e estabilização
+  pinMode(15, INPUT);
+  delay(300);
 
-  Serial.begin(115200);  // Inicia a comunicação serial
+  Serial.begin(115200);
   Serial.println("Inicializando Task Watchdog Timer...");
   esp_task_wdt_init(WDT_TIMEOUT_S, true); 
   esp_task_wdt_add(NULL); 
   Serial.println("Task Watchdog Timer inicializado.");
 
   initializeSensors();
-  initializeCAN();  // Configura a comunicação CAN
+  initializeCAN();  
 }
 
 void loop() {
-  esp_task_wdt_reset(); // Alimenta o WDT regularmente
+  esp_task_wdt_reset();
 
   unsigned long currentMillis = millis();
 
@@ -66,9 +82,19 @@ void loop() {
     lastVelocidadeTime = currentMillis;
   }
 
+  if (currentMillis - lastRPMTime >= intervaloRPM) {
+    processRPM();
+    lastRPMTime = currentMillis;
+  }
+
   if (currentMillis - lastFreioTime >= intervaloFreio) {
     processTempFreio();
     lastFreioTime = currentMillis;
+  }
+
+  if (currentMillis - lastCVTTime >= intervaloCVT) {
+    processTempCVT();
+    lastCVTTime = currentMillis;
   }
 
   if (currentMillis - lastBateriaTime >= intervaloBateria) {
@@ -77,110 +103,136 @@ void loop() {
   }
 }
 
-// Função de interrupção para contar pulsos do sensor indutivo
+// ---- Interrupções ----
 void IRAM_ATTR handleWheelInterrupt() {
-  pulseCount++;
+  pulseCountVel++;
+}
+void IRAM_ATTR handleRPMInterrupt() {
+  pulseCountRPM++;
 }
 
+// ---- Inicializações ----
 void initializeCAN() {
-  CAN.setPins(15, 4); // Define os pinos para RX e TX do CAN
+  CAN.setPins(15, 4); 
   Serial.println("Tentando inicializar o controlador CAN...");
-  
-  // Tenta inicializar o CAN repetidamente até obter sucesso
   while (!CAN.begin(500E3)) {
     Serial.println("Falha ao iniciar o controlador CAN. Tentando novamente em 1 segundo...");
-    delay(1000); // Aguarda 1 segundo antes de tentar novamente
+    delay(1000);
   }
-  
   Serial.println("Controlador CAN inicializado com sucesso!");
 }
 
-// Inicializa os sensores e configura a interrupções
 void initializeSensors() {
-  //RPM
   pinMode(wheelSensorPin, INPUT_PULLUP);  
   attachInterrupt(digitalPinToInterrupt(wheelSensorPin), handleWheelInterrupt, FALLING);
-  Serial.println("Sensores inicializados com sucesso!");
+
+  pinMode(rpmPin, INPUT_PULLUP);
+  attachInterrupt(digitalPinToInterrupt(rpmPin), handleRPMInterrupt, FALLING);
+
+  if (!mlx.begin()) {
+    Serial.println("Erro ao inicializar MLX90614!");
+  } else {
+    Serial.println("MLX90614 inicializado com sucesso!");
+  }
+
+  Serial.println("Sensores inicializados.");
 }
 
+// ---- Processamentos ----
 void processVelocity() {
-    detachInterrupt(digitalPinToInterrupt(wheelSensorPin)); // Desabilita a interrupção temporariamente
+  detachInterrupt(digitalPinToInterrupt(wheelSensorPin));
    
-    // Calcula o número de rotações
-    float rotations = pulseCount; // Supondo 1 pulso por rotação
-    float omega = (2.0 * PI * rotations) / (intervaloVelocidade / 1000.0); // ω = 2π * rotações / tempo
-    float speed = omega * wheelRadius; // v = ω * r
-    float speedKmh = speed * 3.6; // Convertendo para km/h
-    int speedInt = (int)speedKmh; // Armazena apenas a parte inteira da velocidade
+  float rotations = pulseCountVel;
+  float omega = (2.0 * PI * rotations) / (intervaloVelocidade / 1000.0);
+  float speed = omega * wheelRadius;
+  float speedKmh = speed * 3.6;
+  int speedInt = (int)speedKmh;
    
-    Serial.print("Velocidade: ");
-    Serial.print(speedKmh);
-    Serial.println(" km/h");
+  Serial.print("Velocidade: ");
+  Serial.print(speedKmh);
+  Serial.println(" km/h");
 
-    // Envia o RPM via CAN
-    CAN.beginPacket(CAN_ID_VELOCIDADE);  // ID em hexadecimal
-    CAN.write((speedInt >> 8) & 0xFF);  // Envia os 8 bits mais significativos
-    CAN.write(speedInt & 0xFF);  // Envia os 8 bits menos significativos
-    // Tenta encerrar o pacote
-    if (!CAN.endPacket()) {
-    Serial.println("Falha ao enviar pacote CAN de velocidade!");
-    }
-    Serial.println("Velocidade enviada via CAN.");
-   
-    pulseCount = 0; // Reseta o contador de pulsos
-    attachInterrupt(digitalPinToInterrupt(wheelSensorPin), handleWheelInterrupt, FALLING); // Reabilita a interrupção
+  CAN.beginPacket(CAN_ID_VELOCIDADE);
+  CAN.write((speedInt >> 8) & 0xFF);
+  CAN.write(speedInt & 0xFF);
+  if (!CAN.endPacket()) {
+    Serial.println("Falha ao enviar CAN de velocidade!");
+  }
+  pulseCountVel = 0;
+  attachInterrupt(digitalPinToInterrupt(wheelSensorPin), handleWheelInterrupt, FALLING);
+}
+
+void processRPM() {
+  detachInterrupt(digitalPinToInterrupt(rpmPin));
+
+  unsigned long rpm = (pulseCountRPM * 60) / (intervaloRPM / 1000);
+
+  Serial.print("RPM: ");
+  Serial.println(rpm);
+
+  CAN.beginPacket(CAN_ID_RPM);
+  CAN.write((rpm >> 8) & 0xFF);
+  CAN.write(rpm & 0xFF);
+  if (!CAN.endPacket()) {
+    Serial.println("Falha ao enviar CAN de RPM!");
+  }
+
+  pulseCountRPM = 0;
+  attachInterrupt(digitalPinToInterrupt(rpmPin), handleRPMInterrupt, FALLING);
 }
 
 void processTempFreio() {
-  // Lê a temperatura em graus Celsius
   int tempFreio = thermocouple.readCelsius();
   
-  // Imprime a temperatura no monitor serial
-  Serial.print("Temperatura do Freio: ");
+  Serial.print("Temp Freio: ");
   Serial.print(tempFreio);
   Serial.println(" °C");
   
-  // Envia a temperatura do freio via CAN
-  CAN.beginPacket(CAN_ID_FREIO);  // ID em hexadecimal
-  CAN.write((tempFreio >> 8) & 0xFF);  // Envia os 8 bits mais significativos
-  CAN.write(tempFreio & 0xFF);        // Envia os 8 bits menos significativos
-  // Tenta encerrar o pacote
+  CAN.beginPacket(CAN_ID_FREIO);
+  CAN.write((tempFreio >> 8) & 0xFF);
+  CAN.write(tempFreio & 0xFF);
   if (!CAN.endPacket()) {
-  Serial.println("Falha ao enviar pacote CAN de freio!");
-  } 
-  Serial.println("Temperatura do freio enviada via CAN.");
+    Serial.println("Falha ao enviar CAN de freio!");
+  }
+}
+
+void processTempCVT() {
+  float tempCVT = mlx.readObjectTempC();
+
+  Serial.print("Temp CVT: ");
+  Serial.print(tempCVT);
+  Serial.println(" °C");
+
+  int16_t tempInt = static_cast<int16_t>(tempCVT * 100);
+
+  CAN.beginPacket(CAN_ID_CVT);
+  CAN.write((tempInt >> 8) & 0xFF);
+  CAN.write(tempInt & 0xFF);
+  if (!CAN.endPacket()) {
+    Serial.println("Falha ao enviar CAN de CVT!");
+  }
 }
 
 void processBatteryLevel() {
-  // read the analog input
   int adc_value = analogRead(batteryPin);
-
-  // determine voltage at adc input
   float voltage_adc = ((float)adc_value * REF_VOLTAGE) / ADC_RESOLUTION;
-
-  // calculate voltage at the sensor input
   float batteryVoltage = voltage_adc * (R1 + R2) / R2;
 
-  // Vetores com os limites das tensões e seus respectivos níveis de carga
   const float voltageLevels[] = {12.60, 12.50, 12.42, 12.32, 12.20, 12.06, 11.90, 11.75, 11.58, 11.31, 10.50};
-  const int chargeLevels[] = {100, 90, 80, 70, 60, 50, 40, 30, 20, 10, 0};
+  const int chargeLevels[] =   {100,   90,   80,   70,   60,   50,   40,   30,   20,   10,   0};
   
-  // Determinação do nível de carga
   int batteryLevel = 0;
   for (int i = 0; i < sizeof(voltageLevels) / sizeof(voltageLevels[0]); i++) {
     if (batteryVoltage >= voltageLevels[i]) {
       batteryLevel = chargeLevels[i];
-      break;  // Sai do loop ao encontrar o nível correspondente
+      break;
     }
   }
 
-  // Envio do nível da bateria via CAN
-  CAN.beginPacket(CAN_ID_BATERIA);  // ID em hexadecimal
-  CAN.write((batteryLevel >> 8) & 0xFF);  // Envia os 8 bits mais significativos
-  CAN.write(batteryLevel & 0xFF);        // Envia os 8 bits menos significativos
-  // Tenta encerrar o pacote
+  CAN.beginPacket(CAN_ID_BATERIA);
+  CAN.write((batteryLevel >> 8) & 0xFF);
+  CAN.write(batteryLevel & 0xFF);
   if (!CAN.endPacket()) {
-  Serial.println("Falha ao enviar pacote CAN de bateria!");
-}
-  Serial.println("Nivel de bateria enviado via CAN.");
+    Serial.println("Falha ao enviar CAN de bateria!");
+  }
 }
