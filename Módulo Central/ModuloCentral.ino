@@ -200,13 +200,12 @@ void loop() {
             float tensao = conv.value;
 
             Serial.print("Bateria (float): ");
-            Serial.println(tensao, 3);
+            Serial.println(tensao, 2);
 
-            // envia para display e LoRa em uint16 (duas casas decimais)
-            uint16_t tensaoEscalada = (uint16_t)(tensao * 100);
+            int batInt = tensao*100;
 
-            envia_para_display(DISP_ID_BATERIA, tensaoEscalada);
-            dados_lora_atual.bateriaLoRa = tensaoEscalada;
+            envia_para_display(DISP_ID_BATERIA, batInt);
+            dados_lora_atual.bateriaLoRa = tensao;
           }
           break;
 
@@ -289,6 +288,33 @@ void envia_para_display(uint8_t id_display, unsigned int valor) {
   unsigned char pacote[8] = { 0x5a, 0xa5, 0x05, 0x82, id_display, 0x00, highByte(valor), lowByte(valor) };
   // Envia o pacote completo para o display
   DisplaySerial.write(pacote, 8);
+}
+
+void DisplayFloat(uint16_t vp, float value)
+{
+    uint8_t frame[10];
+
+    frame[0] = 0x5A;
+    frame[1] = 0xA5;
+    frame[2] = 0x05;      // length
+    frame[3] = 0x82;      // write variable
+
+    frame[4] = vp >> 8;
+    frame[5] = vp & 0xFF;
+
+    union {
+        float f;
+        uint8_t b[4];
+    } conv;
+
+    conv.f = value; // IEEE754 little-endian
+
+    frame[6] = conv.b[0];
+    frame[7] = conv.b[1];
+    frame[8] = conv.b[2];
+    frame[9] = conv.b[3];
+
+    Serial2.write(frame, 10);
 }
 
 /**
