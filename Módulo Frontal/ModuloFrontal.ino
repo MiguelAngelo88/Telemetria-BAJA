@@ -1,5 +1,5 @@
 /*
-  Telemetria Veicular - Módulo Frontal
+  Telemetria Veicular - Módulo de Aquisição
   Autor: Miguel Ângelo de Lacerda Silva
   Data: 2025
   Descrição: Processamento da Velocidade, RPM do Motor, Nível da Bateria, 
@@ -52,6 +52,9 @@ const float R1 = 30000.0;
 const float R2 = 7500.0;
 unsigned long lastBateriaTime = 0;
 const unsigned long intervaloBateria = 2000;
+// Filtro IIR
+float filtroBateria = 0.0f;
+bool filtroInicializado = false;
 
 // ---- IDs CAN ----
 const uint8_t CAN_ID_VELOCIDADE = 0x15;
@@ -224,25 +227,56 @@ void processTempCVT() {
  }
 }
 
-void processBatteryLevel() {
-  int adc_value = analogRead(batteryPin);
-  float voltage_adc = ((float)adc_value * REF_VOLTAGE) / ADC_RESOLUTION;
-  float batteryVoltage = voltage_adc * (R1 + R2) / R2;
+float leituraADC_oversampling(int pin) {
+  const int N = 64;
+  uint32_t soma = 0;
 
-  const float voltageLevels[] = {12.60, 12.50, 12.42, 12.32, 12.20, 12.06, 11.90, 11.75, 11.58, 11.31, 10.50};
-  const int chargeLevels[] =   {100,   90,   80,   70,   60,   50,   40,   30,   20,   10,   0};
-  
-  int batteryLevel = 0;
-  for (int i = 0; i < sizeof(voltageLevels) / sizeof(voltageLevels[0]); i++) {
-    if (batteryVoltage >= voltageLevels[i]) {
-      batteryLevel = chargeLevels[i];
-      break;
-    }
+  for (int i = 0; i < N; i++) {
+    soma += analogRead(pin);
   }
 
+  return (float)soma / N;
+}
+
+float filtrarIIR(float entrada) {
+  const float alpha = 0.12f;
+
+  if (!filtroInicializado) {
+    filtroBateria = entrada;
+    filtroInicializado = true;
+  }
+
+  filtroBateria += alpha * (entrada - filtroBateria);
+  return filtroBateria;
+}
+
+float lerTensaoBateria() {
+  float adc_raw = leituraADC_oversampling(batteryPin);
+
+  float tensao_adc = (adc_raw / ADC_RESOLUTION) * REF_VOLTAGE;
+  float tensao_bat = tensao_adc * ((R1 + R2) / R2);
+
+  return filtrarIIR(tensao_bat);
+}
+
+void processBatteryLevel() {
+  float batteryVoltage = lerTensaoBateria();
+
+  Serial.print("Bateria (filtrada): ");
+  Serial.print(batteryVoltage, 3);
+  Serial.println(" V");
+
+  // Converte o float para 4 bytes
+  union {
+    float value;
+    uint8_t bytes[4];
+  } data;
+
+  data.value = batteryVoltage;
+
+  // Envia no CAN
   CAN.beginPacket(CAN_ID_BATERIA);
-  CAN.write((batteryLevel >> 8) & 0xFF);
-  CAN.write(batteryLevel & 0xFF);
+  CAN.write(data.bytes, 4);   // envia os 4 bytes do float
   if (!CAN.endPacket()) {
     Serial.println("Falha ao enviar CAN de bateria!");
   }
