@@ -17,7 +17,7 @@
 #include <esp_task_wdt.h>
 
 // Define o timeout do Watchdog Timer em segundos
-#define WDT_TIMEOUT_S 3  // Reinicia o ESP32 se o loop principal travar por mais de 3 segundos
+#define WDT_TIMEOUT_S 15  // Reinicia o ESP32 se o loop principal travar por mais de 15 segundos
 
 /* ----------- IDs CAN --------------*/
 const uint8_t CAN_ID_VELOCIDADE = 0x15;
@@ -119,58 +119,101 @@ void loop() {
     Serial.println(CAN.packetId(), HEX);
 
     // Verifica se o pacote não é um pedido remoto (RTR)
-    if (!CAN.packetRtr() && packetSize == 2) {
-      // Lê os dois bytes do pacote CAN
-      int highByte = CAN.read();
-      int lowByte = CAN.read();
-      unsigned int valor = (highByte << 8) | lowByte; // Combina os bytes
+    if (!CAN.packetRtr() && packetSize >0) {
+      int packetSize = CAN.packetDlc();  // tamanho real (0–8 bytes)
 
-      // Processa o pacote com base no ID CAN
+      // Buffers
+      uint8_t buf2[2];
+      uint8_t buf4[4];
+
+      // Tratamento geral
       switch (CAN.packetId()) {
+
+        // ---------------- VELOCIDADE (uint16) ----------------
         case CAN_ID_VELOCIDADE:
-          Serial.print("Velocidade recebido: ");
-          Serial.println(valor);
-          envia_para_display(DISP_ID_VELOCIDADE, valor);
-          dados_lora_atual.velocidadeLoRa = valor;
+          if (packetSize == 2) {
+            CAN.readBytes(buf2, 2);
+            uint16_t velocidade = (buf2[0] << 8) | buf2[1];
+
+            Serial.print("Velocidade: ");
+            Serial.println(velocidade);
+
+            envia_para_display(DISP_ID_VELOCIDADE, velocidade);
+            dados_lora_atual.velocidadeLoRa = velocidade;
+          }
           break;
 
+        // ---------------- FREIO (uint16) ---------------------
         case CAN_ID_FREIO:
-          Serial.print("TempFreio recebido: ");
-          Serial.println(valor);
-          envia_para_display(DISP_ID_FREIO, valor);
-          dados_lora_atual.freioLoRa = valor;
+          if (packetSize == 2) {
+            CAN.readBytes(buf2, 2);
+            uint16_t freioTemp = (buf2[0] << 8) | buf2[1];
+
+            Serial.print("Temp Freio: ");
+            Serial.println(freioTemp);
+
+            envia_para_display(DISP_ID_FREIO, freioTemp);
+            dados_lora_atual.freioLoRa = freioTemp;
+          }
           break;
 
-        case CAN_ID_BATERIA:
-          Serial.print("NivelBateria recebido: ");
-          Serial.println(valor);
-          envia_para_display(DISP_ID_BATERIA, valor);
-          dados_lora_atual.bateriaLoRa = valor;
-          break;
-
+        // ---------------- RPM (uint16) -----------------------
         case CAN_ID_RPM:
-          Serial.print("RPM recebido: ");
-          Serial.println(valor);
-          envia_para_display(DISP_ID_RPM, valor);
-          dados_lora_atual.rpmLoRa = valor;
+          if (packetSize == 2) {
+            CAN.readBytes(buf2, 2);
+            uint16_t rpm = (buf2[0] << 8) | buf2[1];
+
+            Serial.print("RPM: ");
+            Serial.println(rpm);
+
+            envia_para_display(DISP_ID_RPM, rpm);
+            dados_lora_atual.rpmLoRa = rpm;
+          }
           break;
 
+        // ---------------- CVT (uint16) -----------------------
         case CAN_ID_CVT:
-          Serial.print("tempCVT recebido: ");
-          Serial.println(valor);
-          envia_para_display(DISP_ID_CVT, valor);
-          dados_lora_atual.cvtLoRa = valor;
+          if (packetSize == 2) {
+            CAN.readBytes(buf2, 2);
+            uint16_t tempCVT = (buf2[0] << 8) | buf2[1];
+
+            Serial.print("Temp CVT: ");
+            Serial.println(tempCVT);
+
+            envia_para_display(DISP_ID_CVT, tempCVT);
+            dados_lora_atual.cvtLoRa = tempCVT;
+          }
           break;
 
-        case CAN_ID_COMBUSTIVEL:
-          Serial.print("NivelCombustivel recebido: ");
-          Serial.println(valor);
-          envia_para_display(DISP_ID_COMBUSTIVEL, valor);
-          dados_lora_atual.combustivelLoRa = valor;
+        // ---------------- BATERIA (float – 4 bytes) ----------------
+        case CAN_ID_BATERIA:
+          if (packetSize == 4) {
+
+            CAN.readBytes(buf4, 4);
+
+            union {
+              float value;
+              uint8_t bytes[4];
+            } conv;
+
+            memcpy(conv.bytes, buf4, 4);
+            float tensao = conv.value;
+
+            Serial.print("Bateria (float): ");
+            Serial.println(tensao, 3);
+
+            // envia para display e LoRa em uint16 (duas casas decimais)
+            uint16_t tensaoEscalada = (uint16_t)(tensao * 100);
+
+            envia_para_display(DISP_ID_BATERIA, tensaoEscalada);
+            dados_lora_atual.bateriaLoRa = tensaoEscalada;
+          }
           break;
 
+        // ---------------- QUALQUER OUTRO ID -----------------
         default:
-          Serial.println("ID CAN não reconhecido.");
+          // ignora silenciosamente
+          while (CAN.available()) CAN.read();
           break;
       }
 
