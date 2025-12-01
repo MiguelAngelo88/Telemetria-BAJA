@@ -1,5 +1,5 @@
 /*
-  Telemetria Veicular - Módulo de Aquisição
+  Telemetria Veicular - Módulo Frontal
   Autor: Miguel Ângelo de Lacerda Silva
   Data: 2025
   Descrição: Processamento da Velocidade, RPM do Motor, Nível da Bateria, 
@@ -14,7 +14,7 @@
 #include <Adafruit_MLX90614.h> // Sensor IR da CVT
 #include <esp_task_wdt.h>
 
-#define WDT_TIMEOUT_S 5 // Timeout de 5 segundos
+#define WDT_TIMEOUT_S 15 // Timeout de 5 segundos
 
 // ---- VELOCIDADE ----
 const int wheelSensorPin = 13;
@@ -41,6 +41,8 @@ const unsigned long intervaloFreio = 1000;
 Adafruit_MLX90614 mlx = Adafruit_MLX90614();
 unsigned long lastCVTTime = 0;
 const unsigned long intervaloCVT = 1000;
+bool mlxPresent = false;
+
 
 // ---- NÍVEL DA BATERIA ----
 const int batteryPin = 36;
@@ -59,7 +61,7 @@ const uint8_t CAN_ID_RPM        = 0x18;
 const uint8_t CAN_ID_CVT        = 0x19;
 
 void setup() {
-  pinMode(15, INPUT);
+  //pinMode(15, INPUT);
   delay(300);
 
   Serial.begin(115200);
@@ -130,9 +132,11 @@ void initializeSensors() {
   attachInterrupt(digitalPinToInterrupt(rpmPin), handleRPMInterrupt, FALLING);
 
   if (!mlx.begin()) {
-    Serial.println("Erro ao inicializar MLX90614!");
+  Serial.println("MLX falhou. Sensor desativado.");
+  mlxPresent = false;
   } else {
     Serial.println("MLX90614 inicializado com sucesso!");
+    mlxPresent = true;
   }
 
   Serial.println("Sensores inicializados.");
@@ -140,7 +144,9 @@ void initializeSensors() {
 
 // ---- Processamentos ----
 void processVelocity() {
-  detachInterrupt(digitalPinToInterrupt(wheelSensorPin));
+  //detachInterrupt(digitalPinToInterrupt(wheelSensorPin));
+
+
    
   float rotations = pulseCountVel;
   float omega = (2.0 * PI * rotations) / (intervaloVelocidade / 1000.0);
@@ -159,11 +165,13 @@ void processVelocity() {
     Serial.println("Falha ao enviar CAN de velocidade!");
   }
   pulseCountVel = 0;
-  attachInterrupt(digitalPinToInterrupt(wheelSensorPin), handleWheelInterrupt, FALLING);
+  //attachInterrupt(digitalPinToInterrupt(wheelSensorPin), handleWheelInterrupt, FALLING);
 }
 
 void processRPM() {
-  detachInterrupt(digitalPinToInterrupt(rpmPin));
+  //detachInterrupt(digitalPinToInterrupt(rpmPin));
+
+
 
   unsigned long rpm = (pulseCountRPM * 60) / (intervaloRPM / 1000);
 
@@ -178,7 +186,7 @@ void processRPM() {
   }
 
   pulseCountRPM = 0;
-  attachInterrupt(digitalPinToInterrupt(rpmPin), handleRPMInterrupt, FALLING);
+  //attachInterrupt(digitalPinToInterrupt(rpmPin), handleRPMInterrupt, FALLING);
 }
 
 void processTempFreio() {
@@ -197,13 +205,15 @@ void processTempFreio() {
 }
 
 void processTempCVT() {
+ if (mlxPresent) {
+
   float tempCVT = mlx.readObjectTempC();
 
   Serial.print("Temp CVT: ");
   Serial.print(tempCVT);
   Serial.println(" °C");
 
-  int16_t tempInt = static_cast<int16_t>(tempCVT * 100);
+  int16_t tempInt = (uint16_t)tempCVT;
 
   CAN.beginPacket(CAN_ID_CVT);
   CAN.write((tempInt >> 8) & 0xFF);
@@ -211,6 +221,7 @@ void processTempCVT() {
   if (!CAN.endPacket()) {
     Serial.println("Falha ao enviar CAN de CVT!");
   }
+ }
 }
 
 void processBatteryLevel() {
