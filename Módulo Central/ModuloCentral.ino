@@ -55,7 +55,7 @@ constexpr int RESET_LORA = 14;
 constexpr int SS_LORA    = 18;
 constexpr int LORA_DIO0  = 26;
 constexpr int TX_POWER   = 15; // Potência de transmissão em dBm
-constexpr float BAND     = 915E6; // Frequência de operação do LoRa em Hz (915MHz)
+constexpr float BAND     = 915300000; // Frequência de operação do LoRa em Hz (915.3 MHz)
 
 /* Estrutura de dados para transmissão LoRa */
 typedef struct __attribute__((__packed__)){
@@ -69,6 +69,8 @@ typedef struct __attribute__((__packed__)){
 // Instâncias para armazenar dados atuais e anteriores (para comparação)
 TDadosLora dados_lora_atual = {0}; // Armazena os valores atuais dos sensores
 TDadosLora dados_lora_anterior = {0}; // Armazena os valores anteriores para comparação
+
+uint8_t teamID = 15;
 
 /**
  * Configuração inicial do sistema
@@ -238,6 +240,7 @@ void envia_dados_lora() {
 
   // Inicia a transmissão do pacote LoRa
   LoRa.beginPacket();
+  LoRa.write(teamID);  // <-- Header de 1 byte
   // Envia a estrutura de dados completa como bytes
   LoRa.write((uint8_t*)&dados_lora_atual, sizeof(TDadosLora));
   // Finaliza e transmite o pacote
