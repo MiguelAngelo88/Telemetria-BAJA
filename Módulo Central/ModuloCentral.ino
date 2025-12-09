@@ -38,7 +38,6 @@ constexpr uint8_t DISP_ID_RPM        = 0x62;
 constexpr uint8_t DISP_ID_FREIO      = 0x63;
 constexpr uint8_t DISP_ID_CVT        = 0x64;
 constexpr uint8_t DISP_ID_BATERIA    = 0x65;
-constexpr uint8_t DISP_ID_COMBUSTIVEL= 0x66;
 
 // Buffers para pacotes de dados a serem enviados ao display
 // Formato do pacote: [0x5a, 0xa5, tamanho, comando, endereço, 0x00, highByte, lowByte]
@@ -47,7 +46,6 @@ unsigned char rpm[8] = { 0x5a, 0xa5, 0x05, 0x82, DISP_ID_RPM, 0x00, 0x00, 0x00 }
 unsigned char freio[8] = { 0x5a, 0xa5, 0x05, 0x82, DISP_ID_FREIO, 0x00, 0x00, 0x00 };
 unsigned char cvt[8] = { 0x5a, 0xa5, 0x05, 0x82, DISP_ID_CVT, 0x00, 0x00, 0x00 };
 unsigned char bat[8] = { 0x5a, 0xa5, 0x05, 0x82, DISP_ID_BATERIA, 0x00, 0x00, 0x00 };
-unsigned char comb[8] = { 0x5a, 0xa5, 0x05, 0x82, DISP_ID_COMBUSTIVEL, 0x00, 0x00, 0x00 };
 
 /* Definicoes para comunicação com radio LoRa */
 constexpr int SCK_LORA   = 5;
@@ -63,7 +61,6 @@ constexpr float BAND     = 915E6; // Frequência de operação do LoRa em Hz (91
 typedef struct __attribute__((__packed__)){
   uint16_t rpmLoRa;
   uint16_t velocidadeLoRa;
-  uint16_t combustivelLoRa;
   uint16_t bateriaLoRa;
   uint16_t freioLoRa;
   uint16_t cvtLoRa;
@@ -250,13 +247,12 @@ void envia_dados_lora() {
   dados_lora_anterior = dados_lora_atual;
 
   // Log dos dados enviados para debug
-  Serial.printf("[LoRa Enviado] vel: %u, freio: %u, bat: %u, rpm: %u, cvt: %u, comb: %u\n",
+  Serial.printf("[LoRa Enviado] vel: %u, freio: %u, bat: %u, rpm: %u, cvt: %u\n",
                 dados_lora_atual.velocidadeLoRa,
                 dados_lora_atual.freioLoRa,
                 dados_lora_atual.bateriaLoRa,
                 dados_lora_atual.rpmLoRa,
-                dados_lora_atual.cvtLoRa,
-                dados_lora_atual.combustivelLoRa);
+                dados_lora_atual.cvtLoRa);
 }
 
 /**
