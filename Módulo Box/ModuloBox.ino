@@ -14,6 +14,13 @@
 #include "LoRaWan_APP.h"
 #include "Arduino.h"
 #include <ArduinoJson.h> // Biblioteca para manipulação de JSON
+#include <Wire.h>
+#include "HT_SSD1306Wire.h"
+
+static SSD1306Wire display(0x3c, 500000, SDA_OLED, SCL_OLED, GEOMETRY_128_64, RST_OLED);
+
+String ultimoPacote = "-----";
+String statusLoRa = "Aguardando...";
 
 #define RF_FREQUENCY                                915300000 // Hz
 #define TX_OUTPUT_POWER                             14        // dBm
@@ -51,6 +58,17 @@ void setup() {
     Serial.begin(115200);
     Mcu.begin(HELTEC_BOARD, SLOW_CLK_TPYE);
 
+    // OLED
+    display.init();
+    display.clear();
+    display.display();
+    display.setFont(ArialMT_Plain_10);
+    display.setTextAlignment(TEXT_ALIGN_LEFT);
+
+    display.drawString(0, 0, "Modulo BOX");
+    display.drawString(0, 12, "Iniciando...");
+    display.display();
+
     RadioEvents.RxDone = OnRxDone;
     Radio.Init(&RadioEvents);
     Radio.SetChannel(RF_FREQUENCY);
@@ -60,6 +78,22 @@ void setup() {
                       0, true, 0, 0, LORA_IQ_INVERSION_ON, true);
     
     Serial.println("ESP32 LoRa Receiver - Pronto para receber e enviar JSON via Serial.");
+}
+
+void atualizaDisplay() {
+    display.clear();
+
+    display.setFont(ArialMT_Plain_10);
+    display.setTextAlignment(TEXT_ALIGN_LEFT);
+
+    display.drawString(0, 0, "LoRa: " + statusLoRa);
+
+    display.drawString(0, 14,  ultimoPacote);
+
+    display.drawString(0, 32, "RSSI: " + String(rssi) + " dBm");
+    display.drawString(0, 46, "SNR:  " + String(snr)  + " dB");
+
+    display.display();
 }
 
 void loop() {
@@ -75,24 +109,31 @@ void OnRxDone(uint8_t *payload, uint16_t size, int16_t rssiParam, int8_t snrPara
     snr = snrParam;
     rxSize = size;
 
-    const uint8_t expectedSize = 1 + sizeof(TDadosLora); // HEADER + STRUCT
+    statusLoRa = "Recebendo Pacote";
+
+    const uint8_t expectedSize = 1 + sizeof(TDadosLora);
 
     if (size == expectedSize) {
 
-        // --------- HEADER ---------
         uint8_t teamID = payload[0];
         if (teamID != 15) {
-            Serial.println("[IGNORADO] Pacote de outra equipe.");
+            statusLoRa = "Ignorado";
+            atualizaDisplay();
             Radio.Sleep();
             lora_idle = true;
             return;
         }
 
-        // --------- STRUCT ---------
         TDadosLora dadosRecebidos;
         memcpy(&dadosRecebidos, payload + 1, sizeof(TDadosLora));
 
-        // --------- JSON ---------
+        // salva último pacote para o OLED
+        ultimoPacote =
+            "R" + String(dadosRecebidos.rpmLoRa) +
+            " V" + String(dadosRecebidos.velocidadeLoRa) +
+            " B" + String(dadosRecebidos.bateriaLoRa);
+
+        // JSON
         StaticJsonDocument<128> doc;
 
         doc["rpm"]        = dadosRecebidos.rpmLoRa;
@@ -108,12 +149,11 @@ void OnRxDone(uint8_t *payload, uint16_t size, int16_t rssiParam, int8_t snrPara
         Serial.println();
 
     } else {
-        Serial.println("\r\n[ERRO] Tamanho inesperado de pacote!");
-        Serial.print("Recebido: ");
-        Serial.println(size);
-        Serial.print("Esperado: ");
-        Serial.println(expectedSize);
+        statusLoRa = "Tamanho ERR";
+        ultimoPacote = "-----";
     }
+
+    atualizaDisplay();
 
     Radio.Sleep();
     lora_idle = true;
