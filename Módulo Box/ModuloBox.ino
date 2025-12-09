@@ -33,7 +33,6 @@ typedef struct __attribute__((__packed__)) {
   uint16_t rpmLoRa;
   uint16_t velocidadeLoRa;
   uint16_t bateriaLoRa;
-  uint16_t combustivelLoRa;
   uint16_t freioLoRa;
   uint16_t cvtLoRa;
 } TDadosLora;
@@ -84,15 +83,14 @@ void OnRxDone(uint8_t *payload, uint16_t size, int16_t rssiParam, int8_t snrPara
         // --- Conversão para JSON e Envio Serial ---
         
         // Calcula o tamanho do buffer JSON necessário.
-        // 8 campos (6 da struct + rssi + snr)
-        const size_t capacity = JSON_OBJECT_SIZE(8); 
+        // 7 campos (5 da struct + rssi + snr)
+        const size_t capacity = JSON_OBJECT_SIZE(7); 
         StaticJsonDocument<capacity> doc;
 
         // Popula o objeto JSON
         doc["rpm"] = dadosRecebidos.rpmLoRa;
         doc["velocidade"] = dadosRecebidos.velocidadeLoRa;
         doc["bateria"] = dadosRecebidos.bateriaLoRa;
-        doc["combustivel"] = dadosRecebidos.combustivelLoRa;
         doc["freio"] = dadosRecebidos.freioLoRa;
         doc["cvt"] = dadosRecebidos.cvtLoRa;
         doc["rssi"] = rssi;
