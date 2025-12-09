@@ -15,7 +15,7 @@
 #include "Arduino.h"
 #include <ArduinoJson.h> // Biblioteca para manipulação de JSON
 
-#define RF_FREQUENCY                                915000000 // Hz
+#define RF_FREQUENCY                                915300000 // Hz
 #define TX_OUTPUT_POWER                             14        // dBm
 #define LORA_BANDWIDTH                              0         // [0: 125 kHz, 1: 250 kHz, 2: 500 kHz, 3: Reserved]
 #define LORA_SPREADING_FACTOR                       7         // [SF7..SF12]
@@ -42,8 +42,8 @@ char rxpacket[BUFFER_SIZE];
 
 static RadioEvents_t RadioEvents;
 
-int16_t rssi, rxSize;
-int8_t snr; // Adicionado snr para ser usado na função OnRxDone
+int16_t rssi, rxSize; //Intensidade do sinal (dBm)
+int8_t snr; // Qualidade do sinal (dB)
 
 bool lora_idle = true;
 
@@ -72,44 +72,47 @@ void loop() {
 
 void OnRxDone(uint8_t *payload, uint16_t size, int16_t rssiParam, int8_t snrParam) {
     rssi = rssiParam;
-    snr = snrParam; // Armazena o SNR
+    snr = snrParam;
     rxSize = size;
 
-    if (size == sizeof(TDadosLora)) {
+    const uint8_t expectedSize = 1 + sizeof(TDadosLora); // HEADER + STRUCT
+
+    if (size == expectedSize) {
+
+        // --------- HEADER ---------
+        uint8_t teamID = payload[0];
+        if (teamID != 15) {
+            Serial.println("[IGNORADO] Pacote de outra equipe.");
+            Radio.Sleep();
+            lora_idle = true;
+            return;
+        }
+
+        // --------- STRUCT ---------
         TDadosLora dadosRecebidos;
-        // Copia o payload binário para a estrutura
-        memcpy(&dadosRecebidos, payload, sizeof(TDadosLora));
+        memcpy(&dadosRecebidos, payload + 1, sizeof(TDadosLora));
 
-        // --- Conversão para JSON e Envio Serial ---
-        
-        // Calcula o tamanho do buffer JSON necessário.
-        // 7 campos (5 da struct + rssi + snr)
-        const size_t capacity = JSON_OBJECT_SIZE(7); 
-        StaticJsonDocument<capacity> doc;
+        // --------- JSON ---------
+        StaticJsonDocument<128> doc;
 
-        // Popula o objeto JSON
-        doc["rpm"] = dadosRecebidos.rpmLoRa;
+        doc["rpm"]        = dadosRecebidos.rpmLoRa;
         doc["velocidade"] = dadosRecebidos.velocidadeLoRa;
-        doc["bateria"] = dadosRecebidos.bateriaLoRa;
-        doc["freio"] = dadosRecebidos.freioLoRa;
-        doc["cvt"] = dadosRecebidos.cvtLoRa;
-        doc["rssi"] = rssi;
-        doc["snr"] = snr;
-        doc["timestamp"] = millis(); // Adiciona um timestamp para o dashboard
+        doc["bateria"]    = dadosRecebidos.bateriaLoRa;
+        doc["freio"]      = dadosRecebidos.freioLoRa;
+        doc["cvt"]        = dadosRecebidos.cvtLoRa;
+        doc["rssi"]       = rssi;
+        doc["snr"]        = snr;
+        doc["timestamp"]  = millis();
 
-        // Serializa o objeto JSON para a porta Serial
-        // O '\n' (newline) é crucial para que o script Python saiba onde a mensagem termina.
         serializeJson(doc, Serial);
-        Serial.println(); // Adiciona a quebra de linha
-
-        // Opcional: Imprime o JSON para debug no Monitor Serial
-        // Serial.print("[JSON Enviado] ");
-        // serializeJson(doc, Serial);
-        // Serial.println();
+        Serial.println();
 
     } else {
-        // Apenas para debug: imprime o erro na serial
-        Serial.println("\r\n[LoRa Recebido] Tamanho inesperado de pacote!");
+        Serial.println("\r\n[ERRO] Tamanho inesperado de pacote!");
+        Serial.print("Recebido: ");
+        Serial.println(size);
+        Serial.print("Esperado: ");
+        Serial.println(expectedSize);
     }
 
     Radio.Sleep();
