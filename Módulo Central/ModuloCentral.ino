@@ -33,11 +33,12 @@ const byte txPin = 17; //tx2
 HardwareSerial DisplaySerial(1);
 
 // IDs para comunicação com o display
-constexpr uint8_t DISP_ID_VELOCIDADE = 0x61;
-constexpr uint8_t DISP_ID_RPM        = 0x62;
-constexpr uint8_t DISP_ID_FREIO      = 0x63;
-constexpr uint8_t DISP_ID_CVT        = 0x64;
-constexpr uint8_t DISP_ID_BATERIA    = 0x65;
+constexpr uint8_t DISP_ID_VELOCIDADE     = 0x61;
+constexpr uint8_t DISP_ID_RPM            = 0x62;
+constexpr uint8_t DISP_ID_FREIO          = 0x63;
+constexpr uint8_t DISP_ID_CVT            = 0x64;
+constexpr uint8_t DISP_ID_BATERIA        = 0x65;
+constexpr uint8_t DISP_ID_LORA_STATUS    = 0x66;
 
 // Buffers para pacotes de dados a serem enviados ao display
 // Formato do pacote: [0x5a, 0xa5, tamanho, comando, endereço, 0x00, highByte, lowByte]
@@ -71,6 +72,11 @@ TDadosLora dados_lora_atual = {0}; // Armazena os valores atuais dos sensores
 TDadosLora dados_lora_anterior = {0}; // Armazena os valores anteriores para comparação
 
 uint8_t teamID = 15;
+
+/* Parâmetros para checar o status da transmissão LoRa*/
+unsigned long ultimoEnvioLoRa = 0;
+const unsigned long TIMEOUT_LORA_MS = 2000; 
+uint8_t loraStatus = 1; 
 
 /**
  * Configuração inicial do sistema
@@ -224,6 +230,15 @@ void loop() {
 
   // Envia dados via LoRa se houver mudanças
   envia_dados_lora();
+
+  // Se ficar muito tempo sem enviar qualquer pacote -> vermelho
+  if (millis() - ultimoEnvioLoRa > TIMEOUT_LORA_MS) {
+      if (loraStatus != 1) {
+          loraStatus = 1;
+          atualiza_status_lora_display(1);
+      }
+  }
+
 }
 
 /**
@@ -244,7 +259,18 @@ void envia_dados_lora() {
   // Envia a estrutura de dados completa como bytes
   LoRa.write((uint8_t*)&dados_lora_atual, sizeof(TDadosLora));
   // Finaliza e transmite o pacote
-  LoRa.endPacket();
+  int result = LoRa.endPacket(true); //modo async
+
+  // Tratamento do status LoRa
+  // --------------------------------------
+   if (result == 1) {
+      loraStatus = 0;             // OK
+      ultimoEnvioLoRa = millis(); // registra o envio
+  } else {
+      loraStatus = 1;             // falha
+  }
+
+  atualiza_status_lora_display(loraStatus);
 
   // Atualiza os dados anteriores com os valores atuais
   dados_lora_anterior = dados_lora_atual;
@@ -342,4 +368,10 @@ bool init_comunicacao_lora(){
   }
 
   return status_init;
+}
+
+void atualiza_status_lora_display(uint8_t status)
+{
+    unsigned char pacote[8] = {0x5A, 0xA5, 0x05, 0x82, DISP_ID_LORA_STATUS, 0x00, 0x00, status};
+    DisplaySerial.write(pacote, 8);
 }
