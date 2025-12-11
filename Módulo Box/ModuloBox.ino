@@ -3,7 +3,7 @@
   Autor: Miguel Ângelo de Lacerda Silva
   Data: 2025
   Descrição: Recebimento dos dados via rádio LoRa e envio para dashboard em python
-  Hardware: Heltec Wifi LoRa 32(V3)
+  Hardware: Wifi LoRa 32(V3)
   
   MODIFICADO: Incluído o envio dos dados recebidos via LoRa para a Serial em formato JSON.
   REQUISITO: Instalar a biblioteca "ArduinoJson" (versão 6 ou superior).
@@ -21,6 +21,8 @@ static SSD1306Wire display(0x3c, 500000, SDA_OLED, SCL_OLED, GEOMETRY_128_64, RS
 
 String ultimoPacote = "-----";
 String statusLoRa = "Aguardando...";
+unsigned long ultimoPacoteMillis = 0;
+const unsigned long TIMEOUT_LORA = 2000;  // 2s sem receber pacotes 
 
 #define RF_FREQUENCY                                915300000 // Hz
 #define TX_OUTPUT_POWER                             14        // dBm
@@ -97,11 +99,30 @@ void atualizaDisplay() {
 }
 
 void loop() {
+
+    // Inicia modo RX quando o rádio está ocioso
     if (lora_idle) {
         lora_idle = false;
         Radio.Rx(0);
     }
+
+    // Processa interrupções do LoRa
     Radio.IrqProcess();
+
+    // --- DETECÇÃO DE TIMEOUT DO LoRa ---
+    // Se ficar mais de 2 segundos sem receber pacote → sem sinal
+    if (millis() - ultimoPacoteMillis > TIMEOUT_LORA) {
+
+        statusLoRa = "Sem sinal";
+        ultimoPacote = "-----";
+        rssi = 0;
+        snr = 0;
+
+        atualizaDisplay();
+
+        // evita chamar display muitas vezes
+        ultimoPacoteMillis = millis();
+    }
 }
 
 void OnRxDone(uint8_t *payload, uint16_t size, int16_t rssiParam, int8_t snrParam) {
@@ -131,6 +152,8 @@ void OnRxDone(uint8_t *payload, uint16_t size, int16_t rssiParam, int8_t snrPara
         ultimoPacote =
             "R" + String(dadosRecebidos.rpmLoRa) +
             " V" + String(dadosRecebidos.velocidadeLoRa) +
+            " C" + String(dadosRecebidos.cvtLoRa) +
+            " F" + String(dadosRecebidos.freioLoRa) +
             " B" + String(dadosRecebidos.bateriaLoRa);
 
         // JSON
@@ -153,6 +176,7 @@ void OnRxDone(uint8_t *payload, uint16_t size, int16_t rssiParam, int8_t snrPara
         ultimoPacote = "-----";
     }
 
+    ultimoPacoteMillis = millis();
     atualizaDisplay();
 
     Radio.Sleep();
